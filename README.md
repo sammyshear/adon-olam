@@ -1,2 +1,1 @@
-# adon-olam
-Adon olam tune generator
+# Adon Olam Tune Generator

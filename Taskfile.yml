@@ -1,0 +1,120 @@
+version: "3"
+
+dotenv: [.env]
+
+tasks:
+  default:
+    desc: Display all available tasks.
+    cmds:
+      - task: list
+
+  list:
+    desc: List all tasks.
+    cmds:
+      - task -l
+
+  install:
+    desc: Initialize the project.
+    cmds:
+      - task: install:bun
+      - task: install:modules
+      - task: install:tools
+      - task: install:golint
+
+  gen:
+    desc: Generate Templ and TailwindCSS files.
+    cmds:
+      - bun run fmt
+      - bun run build
+      - task: generate-templ
+
+  generate-templ:
+    desc: Generate Templ files.
+    cmds:
+      - templ generate
+
+  dev:
+    desc: Run the dev server.
+    cmds:
+      - task --parallel dev:templ dev:air dev:assets dev:sync_assets
+
+  dev:assets:
+    desc: Run TailwindCSS And Esbuild build in watch mode.
+    cmds:
+      - bun run dev
+
+  dev:air:
+    desc: Run the dev server with air.
+    cmds:
+      - air -c .air.toml
+
+  dev:templ:
+    desc: Run the dev server with templ.
+    cmds:
+      - templ generate --watch --proxy="http://localhost:8080" --open-browser=false
+
+  dev:sync_assets: air -c .air_proxy.toml
+
+  build:
+    desc: Build production Go binary and assets.
+    cmds:
+      - task: gen
+      - go build -o bin/app ./main.go
+      - chmod +x bin/app
+
+  dev-caddy:
+    desc: Run Caddy server For WildCard SubDomain For Local Development.
+    cmds:
+      - caddy run --config ./scripts/Caddyfile.dev
+
+  run:
+    desc: Run the Go binary.
+    cmds:
+      - ./bin/app
+
+  install:bun:
+    desc: Install dependencies.
+    cmds:
+      - bun install
+
+  install:golint:
+    desc: Install golint.
+    cmds:
+      - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+
+  install:modules:
+    desc: Download Go modules.
+    cmds:
+      - go mod download
+
+  install:tools:
+    desc: Install tools.
+    cmds:
+      - awk -F'"' '/_/ {print $2}' tools.go | xargs -tI % go install %
+
+  tidy:
+    desc: Tidy go.sum.
+    cmds:
+      - go mod tidy
+
+  lint:
+    desc: Uses golangci-lint
+    cmds:
+      - golangci-lint run
+
+  fmt:
+    desc: Reformat code
+    cmds:
+      - bun run fmt
+      - go fmt ./...
+
+  check:
+    desc: Run all checks.
+    cmds:
+      - task: fmt
+      - task: tidy
+      - task: lint
+      - task: nil-away
+      - task: vuln
+      - task: sql-check-files
+      - task: sql-check-structure
