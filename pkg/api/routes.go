@@ -15,5 +15,8 @@ func MuxWithRoutes() *http.ServeMux {
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	mux.Handle("/", templ.Handler(indexPage))
 
+	// api routes
+	mux.HandleFunc("POST /api/upload", UploadMidi)
+
 	return mux
 }

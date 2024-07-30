@@ -23,3 +23,6 @@ static/styles.css
 # Go workspace file
 go.work
 go.work.sum
+
+# env
+.env

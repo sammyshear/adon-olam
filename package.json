@@ -23,6 +23,7 @@
     "alpinejs": "latest",
     "esbuild": "^0.20.2",
     "htmx.org": "latest",
+    "hyperscript.org": "^0.9.12",
     "tailwindcss": "^3.4.3"
   },
   "devDependencies": {

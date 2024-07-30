@@ -38,13 +38,13 @@ func Index() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<main></main>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<main><form hx-encoding=\"multipart/form-data\" hx-post=\"/api/upload\" _=\"on htmx:xhr:progress(loaded, total) set #progress.value to (loaded/total)*100\"><input type=\"file\" name=\"uploadFile\"> <label for=\"trackNo\">Track Number</label> <input type=\"number\" name=\"trackNo\"> <button>Upload</button> <progress id=\"progress\" value=\"0\" max=\"100\"></progress></form></main>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return templ_7745c5c3_Err
 		})
-		templ_7745c5c3_Err = BaseLayout(PageInfo{Title: "Trivia Chase"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = BaseLayout(PageInfo{Title: "Adon Olam Tune Generator"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
