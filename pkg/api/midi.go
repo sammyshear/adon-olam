@@ -43,81 +43,104 @@ var hertzTable = map[midi.Note]float64{
 	midi.Note(midi.A(1)):  55,
 	midi.Note(midi.Bb(1)): 58.27,
 	midi.Note(midi.B(1)):  61.735,
-	midi.Note(midi.C(2)):  65.406,
-	midi.Note(midi.Db(2)): 69.296,
-	midi.Note(midi.D(2)):  73.416,
-	midi.Note(midi.Eb(2)): 77.782,
-	midi.Note(midi.E(2)):  82.407,
-	midi.Note(midi.F(2)):  87.307,
-	midi.Note(midi.Gb(2)): 92.499,
-	midi.Note(midi.G(2)):  97.999,
-	midi.Note(midi.Ab(2)): 103.826,
-	midi.Note(midi.A(2)):  110,
-	midi.Note(midi.Bb(2)): 116.541,
-	midi.Note(midi.B(2)):  123.471,
-	midi.Note(midi.C(3)):  130.813,
-	midi.Note(midi.Db(3)): 138.591,
-	midi.Note(midi.D(3)):  146.832,
-	midi.Note(midi.Eb(3)): 155.563,
-	midi.Note(midi.E(3)):  164.814,
-	midi.Note(midi.F(3)):  174.614,
-	midi.Note(midi.Gb(3)): 184.997,
-	midi.Note(midi.G(3)):  195.998,
-	midi.Note(midi.Ab(3)): 207.652,
-	midi.Note(midi.A(3)):  220,
-	midi.Note(midi.Bb(3)): 233.082,
-	midi.Note(midi.B(3)):  246.942,
-	midi.Note(midi.C(4)):  261.626,
-	midi.Note(midi.Db(4)): 277.183,
-	midi.Note(midi.D(4)):  293.665,
-	midi.Note(midi.Eb(4)): 311.127,
-	midi.Note(midi.E(4)):  329.628,
-	midi.Note(midi.F(4)):  349.228,
-	midi.Note(midi.Gb(4)): 369.994,
-	midi.Note(midi.G(4)):  391.995,
-	midi.Note(midi.Ab(4)): 415.305,
-	midi.Note(midi.A(4)):  440,
-	midi.Note(midi.Bb(4)): 466.164,
-	midi.Note(midi.B(4)):  493.883,
-	midi.Note(midi.C(5)):  523.251,
-	midi.Note(midi.Db(5)): 554.365,
-	midi.Note(midi.D(5)):  587.33,
-	midi.Note(midi.Eb(5)): 622.254,
-	midi.Note(midi.E(5)):  659.255,
-	midi.Note(midi.F(5)):  698.456,
-	midi.Note(midi.Gb(5)): 739.989,
-	midi.Note(midi.G(5)):  783.991,
-	midi.Note(midi.Ab(5)): 830.609,
-	midi.Note(midi.A(5)):  880,
-	midi.Note(midi.Bb(5)): 932.328,
-	midi.Note(midi.B(5)):  987.767,
-	midi.Note(midi.C(6)):  1046.502,
-	midi.Note(midi.Db(6)): 1108.731,
-	midi.Note(midi.D(6)):  1174.659,
-	midi.Note(midi.Eb(6)): 1244.508,
-	midi.Note(midi.E(6)):  1318.51,
-	midi.Note(midi.F(6)):  1396.913,
-	midi.Note(midi.Gb(6)): 1479.978,
-	midi.Note(midi.G(6)):  1567.982,
-	midi.Note(midi.Ab(6)): 1661.219,
-	midi.Note(midi.A(6)):  1760,
-	midi.Note(midi.Bb(6)): 1864.655,
-	midi.Note(midi.B(6)):  1975.533,
-	midi.Note(midi.C(7)):  2093.005,
-	midi.Note(midi.Db(7)): 2217.461,
-	midi.Note(midi.D(7)):  2349.318,
-	midi.Note(midi.Eb(7)): 2489.016,
-	midi.Note(midi.E(7)):  2637.021,
-	midi.Note(midi.F(7)):  2793.826,
-	midi.Note(midi.Gb(7)): 2959.955,
-	midi.Note(midi.G(7)):  3135.964,
-	midi.Note(midi.Ab(7)): 3322.438,
-	midi.Note(midi.A(7)):  3520,
-	midi.Note(midi.Bb(7)): 3729.31,
-	midi.Note(midi.B(7)):  3951.066,
+	midi.Note(midi.C(2)):  32.703,
+	midi.Note(midi.Db(2)): 34.648,
+	midi.Note(midi.D(2)):  36.708,
+	midi.Note(midi.Eb(2)): 38.891,
+	midi.Note(midi.E(2)):  41.203,
+	midi.Note(midi.F(2)):  43.654,
+	midi.Note(midi.Gb(2)): 46.249,
+	midi.Note(midi.G(2)):  48.999,
+	midi.Note(midi.Ab(2)): 51.913,
+	midi.Note(midi.A(2)):  55,
+	midi.Note(midi.Bb(2)): 58.27,
+	midi.Note(midi.B(2)):  61.735,
+	midi.Note(midi.C(3)):  32.703,
+	midi.Note(midi.Db(3)): 34.648,
+	midi.Note(midi.D(3)):  36.708,
+	midi.Note(midi.Eb(3)): 38.891,
+	midi.Note(midi.E(3)):  41.203,
+	midi.Note(midi.F(3)):  43.654,
+	midi.Note(midi.Gb(3)): 46.249,
+	midi.Note(midi.G(3)):  48.999,
+	midi.Note(midi.Ab(3)): 51.913,
+	midi.Note(midi.A(3)):  55,
+	midi.Note(midi.Bb(3)): 58.27,
+	midi.Note(midi.B(3)):  61.735,
+	midi.Note(midi.C(4)):  32.703,
+	midi.Note(midi.Db(4)): 34.648,
+	midi.Note(midi.D(4)):  36.708,
+	midi.Note(midi.Eb(4)): 38.891,
+	midi.Note(midi.E(4)):  41.203,
+	midi.Note(midi.F(4)):  43.654,
+	midi.Note(midi.Gb(4)): 46.249,
+	midi.Note(midi.G(4)):  48.999,
+	midi.Note(midi.Ab(4)): 51.913,
+	midi.Note(midi.A(4)):  55,
+	midi.Note(midi.Bb(4)): 58.27,
+	midi.Note(midi.B(4)):  61.735,
+	midi.Note(midi.C(5)):  32.703,
+	midi.Note(midi.Db(5)): 34.648,
+	midi.Note(midi.D(5)):  36.708,
+	midi.Note(midi.Eb(5)): 38.891,
+	midi.Note(midi.E(5)):  41.203,
+	midi.Note(midi.F(5)):  43.654,
+	midi.Note(midi.Gb(5)): 46.249,
+	midi.Note(midi.G(5)):  48.999,
+	midi.Note(midi.Ab(5)): 51.913,
+	midi.Note(midi.A(5)):  55,
+	midi.Note(midi.Bb(5)): 58.27,
+	midi.Note(midi.B(5)):  61.735,
+	midi.Note(midi.C(6)):  32.703,
+	midi.Note(midi.Db(6)): 34.648,
+	midi.Note(midi.D(6)):  36.708,
+	midi.Note(midi.Eb(6)): 38.891,
+	midi.Note(midi.E(6)):  41.203,
+	midi.Note(midi.F(6)):  43.654,
+	midi.Note(midi.Gb(6)): 46.249,
+	midi.Note(midi.G(6)):  48.999,
+	midi.Note(midi.Ab(6)): 51.913,
+	midi.Note(midi.A(6)):  55,
+	midi.Note(midi.Bb(6)): 58.27,
+	midi.Note(midi.B(6)):  61.735,
+	midi.Note(midi.C(7)):  32.703,
+	midi.Note(midi.Db(7)): 34.648,
+	midi.Note(midi.D(7)):  36.708,
+	midi.Note(midi.Eb(7)): 38.891,
+	midi.Note(midi.E(7)):  41.203,
+	midi.Note(midi.F(7)):  43.654,
+	midi.Note(midi.Gb(7)): 46.249,
+	midi.Note(midi.G(7)):  48.999,
+	midi.Note(midi.Ab(7)): 51.913,
+	midi.Note(midi.A(7)):  55,
+	midi.Note(midi.Bb(7)): 58.27,
+	midi.Note(midi.B(7)):  61.735,
 }
 
-var text = []string{"אֲד", "וֹן", "עוֹ", "לָם", "אֲ", "שֶׁר", "מָ", "לַךְ,", "בְּטֶ", "רֶם", "כָּל", "יְצִיר", "נִבְ", "רָא.", "לְעֵת", "נַעֲ", "שָׂה", "בְחֶפְ", "צוֹ", "כֹּל,", "אֲזַי", "מֶלֶךְ", "שְׁמוֹ", "נִקְ", "רָא."}
+const (
+	ipa = "a.don. o.lam. a.ʃeʁ. ma.lax. be.teʁ.em. kol. je.tsiʁ. niv.ʁa. le.et. naa.sah. vex.ef.tso .kol. a.zai .melex. ʃe.mo. nik.ʁa. ve.ax.a.ʁei. kix.lot. hak.kol. le.vad.do. jim.lox. no.ʁa. ve.hu ha.jah. ve.hu. ho.veh. ve.hu. jih.jeh. bet.if.a.ʁah. ve.hu. e.xad. ve.ein. ʃe.ni. le.ham.ʃil. lo. lehax.bi.ʁah. be.li. ʁe.ʃit. be.li. tax.lit. ve.lo. ha.oz. ve.ham.mis.ʁah. ve.hu. e.li. ve.xai. go.a.li. ve.tsuʁ. xev.li. be.et. tsa.ʁah. ve.hu. nis.si. u.ma.nos. li. me.nat. ko.si. be.jom. ek.ʁa. beja.do. af.kid. ʁu.xi. beet. i.ʃan. ve.a.i.ʁah. ve.im .ʁu.xi. ge.vij.ja.ti. ad.o.nai. li. ve.lo. i.ʁa."
+	t   = `
+אֲד.וֹן. עוֹ.לָם. אֲ.שֶׁר. מָ.לַךְ.
+בְּ.טֶ.רֶם. כָּל. יְ.צִיר. נִבְ.רָא.
+לְ.עֵת. נַעֲ.שָׂה. בְחֶ.פְצוֹ. כֹּל.
+אֲ.זַי. מֶ.לֶךְ. שְׁ.מוֹ. נִ.קְרָא.
+וְ.אַ.חֲ.רֵי. כִּכְ.לוֹת. הַ.כֹּל.
+לְ.בַדּ.וֹ. יִמְ.לוֹךְ. נוֹ.רָא.
+וְ.הוּא. הָ.יָה. וְ.הוּא. הֹ.וֶה.
+וְ.הוּא. יִהְ.יֶה. בְּ.תִ.פְאָ.רָה.
+וְ.הוּא. אֶ.חָד. וְ.אֵין. שֵׁ.נִי.
+לְ.הַמְ.שִׁיל. לוֹ. לְ.הַחְ.בִּי.רָה.
+בְּלִי. רֵא.שִׁית. בְּלִי. תַכְ.לִית.
+וְ.לוֹ. הָ.עֹז. וְ.הַמִּשְׂ.רָה.
+וְ.הוּא. אֵ.לִי. וְ.חַי. גֹּ.אֲלִי.
+וְ.צוּר. חֶ.בְלִי. בְּ.עֵת. צָ.רָה.
+וְ.הוּא. נִ.סִּ.י. וּ.מָנ.וֹס. לִי.
+מְ.נָת. כּוֹ.סִי. בְּ.יוֹם. אֶ.קְרָא.
+בְּ.יָד.וֹ. אַפְ.קִיד. רוּ.חִי.
+בְּ.עֵת. אִי.שַׁן. וְ.אָעִי.רָה.
+וְ.עִם. רוּ.חִי. גְּוִ.יָּ.תִי.
+יְיָ. לִי. וְ.לֹא. אִי.רָא`
+)
 
 func UploadMidi(w http.ResponseWriter, r *http.Request) {
 	speechKey := os.Getenv("SPEECH_KEY")
@@ -143,42 +166,58 @@ func UploadMidi(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var bpm float64
 	var messages []smf.Message
 
 	smf.ReadTracksFrom(file).Do(func(te smf.TrackEvent) {
 		if te.Message.IsMeta() {
 			fmt.Printf("[%v] @%vms %s\n", te.TrackNo, te.AbsMicroSeconds/1000, te.Message.String())
-			if te.Message.Is(smf.MetaTempoMsg) {
-				te.Message.GetMetaTempo(&bpm)
-			}
 		} else {
 			if te.TrackNo == trackNo {
-				if te.Message.IsPlayable() {
-
-					var channel, key, velocity uint8
-					te.Message.GetNoteOn(&channel, &key, &velocity)
-					if key > 0 {
-						messages = append(messages, te.Message)
-					}
+				if te.Message.Is(midi.NoteOnMsg) {
+					messages = append(messages, te.Message)
 				}
 			}
 		}
 	})
 
-	duration := len(text) * int(bpm)
-	ssml := fmt.Sprintf(`<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='he-IL'><voice xml:lang='he-IL' xml:gender='Female' name='he-IL-HilaNeural'><mstts:audioduration value='%dms' />`, duration)
-	for i, message := range messages {
-		if message.IsPlayable() && i < len(text) {
-			var channel, key, velocity uint8
-			message.GetNoteOn(&channel, &key, &velocity)
-			fmt.Printf("%d\n", key)
-			ssml += fmt.Sprintf(`<prosody pitch='%fHz'>%s</prosody>`, hertzTable[midi.Note(key)], text[i])
+	text := strings.Split(strings.ReplaceAll(ipa, " ", ""), ".")
+	text2 := strings.Split(strings.ReplaceAll(strings.ReplaceAll(t, "\n", " "), " ", ""), ".")
+
+	ssml := `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='he-IL'><voice name='he-IL-AvriNeural'>`
+	noteStart := time.Now()
+	restStart := time.Now()
+	i := 0
+	for _, message := range messages {
+		if i < len(text2) {
+			if message.Is(midi.NoteOnMsg) {
+				var channel, key, velocity uint8
+				message.GetNoteOn(&channel, &key, &velocity)
+				if velocity > 0 {
+					noteStart = time.Now()
+					restDur := time.Since(restStart)
+					ssml += fmt.Sprintf("<mstts:silence type='tailing' value='%dms'/>", restDur.Abs().Milliseconds())
+				} else {
+					restStart = time.Now()
+					noteDur := time.Since(noteStart)
+					length := "medium"
+					if noteDur.Microseconds() < 2 {
+						length = "x-fast"
+					} else if noteDur.Microseconds() > 2 && noteDur.Microseconds() < 5 {
+						length = "fast"
+					} else if noteDur.Seconds() > 5 && noteDur.Microseconds() < 8 {
+						length = "medium"
+					} else if noteDur.Microseconds() > 8 && noteDur.Microseconds() < 12 {
+						length = "slow"
+					} else if noteDur.Seconds() > 12 {
+						length = "x-slow"
+					}
+					ssml += fmt.Sprintf(`<prosody pitch='%fHz' rate='%s'><phoneme alphabet='ipa' ph='%s'>%s</phoneme></prosody>`, hertzTable[midi.Note(key)], length, text[i], text2[i])
+					i++
+				}
+			}
 		}
 	}
 	ssml += `</voice></speak>`
-
-	fmt.Printf("%s\n", ssml)
 
 	tokenReq, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s.api.cognitive.microsoft.com/sts/v1.0/issueToken", speechRegion), nil)
 	if err != nil {
@@ -254,7 +293,7 @@ func uploadMp3(b []byte, fileName string) error {
 	defer cancel()
 	o := client.Bucket(bucket).Object(object)
 
-	o = o.If(storage.Conditions{DoesNotExist: true})
+	// o = o.If(storage.Conditions{DoesNotExist: true})
 
 	wc := o.NewWriter(ctx)
 	if _, err = io.Copy(wc, file); err != nil {
