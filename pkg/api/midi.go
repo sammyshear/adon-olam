@@ -5,11 +5,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -142,140 +144,213 @@ const (
 יְיָ. לִי. וְ.לֹא. אִי.רָא`
 )
 
-func UploadMidi(w http.ResponseWriter, r *http.Request) {
-	speechKey := os.Getenv("SPEECH_KEY")
-	speechRegion := os.Getenv("SPEECH_REGION")
-	r.ParseMultipartForm(10 << 20) // 10 MB
-	file, header, err := r.FormFile("uploadFile")
-	if err != nil {
-		http.Error(w, fmt.Sprintf("upload error: %v", err), http.StatusInternalServerError)
-		return
-	}
-	defer file.Close()
-	trackNo, err := strconv.Atoi(r.FormValue("trackNo"))
-	if err != nil {
-		http.Error(w, "Error parsing track number.", http.StatusInternalServerError)
-		return
-	}
+type channel struct {
+	requestID string
+	file      multipart.File
+	header    *multipart.FileHeader
+	statusUrl string
+	trackNo   int
+}
 
-	re := regexp.MustCompile(`/(?i:^.*\.(mid|midi)$)/gm`)
-	fileName := header.Filename
+func UploadMidiHandler(ch chan channel) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		statusUrl := "/api/status/"
+		requestID := generateRequestID()
+		storeStatus(requestID, JobStatus{State: "NEW"})
 
-	if re.MatchString(header.Filename) {
-		http.Error(w, "Unsupported file type, please upload a midi file.", http.StatusUnsupportedMediaType)
-		return
-	}
+		statusUrl += requestID
 
-	var messages []smf.Message
-
-	smf.ReadTracksFrom(file).Do(func(te smf.TrackEvent) {
-		if te.Message.IsMeta() {
-			fmt.Printf("[%v] @%vms %s\n", te.TrackNo, te.AbsMicroSeconds/1000, te.Message.String())
-		} else {
-			if te.TrackNo == trackNo {
-				if te.Message.Is(midi.NoteOnMsg) {
-					messages = append(messages, te.Message)
-				}
-			}
+		r.ParseMultipartForm(10 << 20) // 10 MB
+		file, header, err := r.FormFile("uploadFile")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
-	})
+		trackNo, err := strconv.Atoi(r.FormValue("trackNo"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		ch <- channel{requestID, file, header, statusUrl, trackNo}
 
-	text := strings.Split(strings.ReplaceAll(ipa, " ", ""), ".")
-	text2 := strings.Split(strings.ReplaceAll(strings.ReplaceAll(t, "\n", " "), " ", ""), ".")
+		w.Header().Add("X-Status-URL", statusUrl)
 
-	ssml := `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='he-IL'><voice name='he-IL-AvriNeural'>`
-	noteStart := time.Now()
-	restStart := time.Now()
-	i := 0
-	for _, message := range messages {
-		if i < len(text2) {
-			if message.Is(midi.NoteOnMsg) {
-				var channel, key, velocity uint8
-				message.GetNoteOn(&channel, &key, &velocity)
-				if velocity > 0 {
-					noteStart = time.Now()
-					restDur := time.Since(restStart)
-					ssml += fmt.Sprintf("<mstts:silence type='tailing' value='%dms'/>", restDur.Abs().Milliseconds())
-				} else {
-					restStart = time.Now()
-					noteDur := time.Since(noteStart)
-					length := "medium"
-					if noteDur.Microseconds() < 2 {
-						length = "x-fast"
-					} else if noteDur.Microseconds() > 2 && noteDur.Microseconds() < 5 {
-						length = "fast"
-					} else if noteDur.Seconds() > 5 && noteDur.Microseconds() < 8 {
-						length = "medium"
-					} else if noteDur.Microseconds() > 8 && noteDur.Microseconds() < 12 {
-						length = "slow"
-					} else if noteDur.Seconds() > 12 {
-						length = "x-slow"
+		w.WriteHeader(http.StatusAccepted)
+
+		w.Write([]byte(fmt.Sprintf(`
+    <div hx-trigger="done" hx-get="%s" hx-swap="outerHTML" hx-target="this">
+      <h3 role="status" id="pblabel" tabindex="-1" autofocus>Accepted, Running Operation</h3>
+      <div hx-trigger="every 1s" hx-swap="none" hx-get="%s/tick"></div>
+    </div>`, statusUrl, statusUrl)))
+	}
+}
+
+func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
+	for c := range ch {
+		id := c.requestID
+		file := c.file
+		header := c.header
+		trackNo := c.trackNo
+		statusUrl := c.statusUrl
+		speechKey := os.Getenv("SPEECH_KEY")
+		speechRegion := os.Getenv("SPEECH_REGION")
+		defer file.Close()
+
+		re := regexp.MustCompile(`/(?i:^.*\.(mid|midi)$)/gm`)
+		fileName := header.Filename
+
+		if re.MatchString(header.Filename) {
+			storeStatus(id, JobStatus{
+				State:   "ERRORED",
+				Message: "Not a midi file.",
+				JobUrl:  statusUrl,
+			})
+			return
+		}
+
+		var messages []smf.Message
+
+		smf.ReadTracksFrom(file).Do(func(te smf.TrackEvent) {
+			if te.Message.IsMeta() {
+				fmt.Printf("[%v] @%vms %s\n", te.TrackNo, te.AbsMicroSeconds/1000, te.Message.String())
+			} else {
+				if te.TrackNo == trackNo {
+					if te.Message.Is(midi.NoteOnMsg) {
+						messages = append(messages, te.Message)
 					}
-					ssml += fmt.Sprintf(`<prosody pitch='%fHz' rate='%s'><phoneme alphabet='ipa' ph='%s'>%s</phoneme></prosody>`, hertzTable[midi.Note(key)], length, text[i], text2[i])
-					i++
+				}
+			}
+		})
+
+		text := strings.Split(strings.ReplaceAll(ipa, " ", ""), ".")
+		text2 := strings.Split(strings.ReplaceAll(strings.ReplaceAll(t, "\n", " "), " ", ""), ".")
+
+		ssml := `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='he-IL'><voice name='he-IL-AvriNeural'>`
+		noteStart := time.Now()
+		restStart := time.Now()
+		i := 0
+		for _, message := range messages {
+			if i < len(text2) {
+				if message.Is(midi.NoteOnMsg) {
+					var channel, key, velocity uint8
+					message.GetNoteOn(&channel, &key, &velocity)
+					if velocity > 0 {
+						noteStart = time.Now()
+						restDur := time.Since(restStart)
+						ssml += fmt.Sprintf("<mstts:silence type='tailing' value='%dms'/>", restDur.Abs().Milliseconds())
+					} else {
+						restStart = time.Now()
+						noteDur := time.Since(noteStart)
+						length := "medium"
+						if noteDur.Microseconds() < 2 {
+							length = "x-fast"
+						} else if noteDur.Microseconds() > 2 && noteDur.Microseconds() < 5 {
+							length = "fast"
+						} else if noteDur.Seconds() > 5 && noteDur.Microseconds() < 8 {
+							length = "medium"
+						} else if noteDur.Microseconds() > 8 && noteDur.Microseconds() < 12 {
+							length = "slow"
+						} else if noteDur.Seconds() > 12 {
+							length = "x-slow"
+						}
+						_ = length
+						ssml += fmt.Sprintf(`<prosody pitch='%fHz'><phoneme alphabet='ipa' ph='%s'>%s</phoneme></prosody>`, hertzTable[midi.Note(key)], text[i], text2[i])
+						i++
+					}
 				}
 			}
 		}
+		ssml += `</voice></speak>`
+
+		tokenReq, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s.api.cognitive.microsoft.com/sts/v1.0/issueToken", speechRegion), nil)
+		if err != nil {
+			storeStatus(id, JobStatus{
+				State:   "ERRORED",
+				Message: err.Error(),
+				JobUrl:  statusUrl,
+			})
+			return
+		}
+
+		tokenReq.Header.Add("Ocp-Apim-Subscription-Key", speechKey)
+
+		tokenRes, err := http.DefaultClient.Do(tokenReq)
+		if err != nil {
+			storeStatus(id, JobStatus{
+				State:   "ERRORED",
+				Message: err.Error(),
+				JobUrl:  statusUrl,
+			})
+			return
+		}
+
+		defer tokenRes.Body.Close()
+		bSpeechAuth, err := io.ReadAll(tokenRes.Body)
+		if err != nil {
+			storeStatus(id, JobStatus{
+				State:   "ERRORED",
+				Message: err.Error(),
+				JobUrl:  statusUrl,
+			})
+			return
+		}
+
+		speechAuth := string(bSpeechAuth)
+
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s.tts.speech.microsoft.com/cognitiveservices/v1", speechRegion), strings.NewReader(ssml))
+		if err != nil {
+			storeStatus(id, JobStatus{
+				State:   "ERRORED",
+				Message: err.Error(),
+				JobUrl:  statusUrl,
+			})
+			return
+		}
+
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", speechAuth))
+		req.Header.Add("Content-Type", "application/ssml+xml")
+		req.Header.Add("Connection", "Keep-Alive")
+		req.Header.Add("X-Microsoft-OutputFormat", "audio-16khz-64kbitrate-mono-mp3")
+		req.Header.Add("User-Agent", "adon-olam-tune-generator")
+
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			storeStatus(id, JobStatus{
+				State:   "ERRORED",
+				Message: err.Error(),
+				JobUrl:  statusUrl,
+			})
+			return
+		}
+
+		if res.StatusCode != 200 {
+			storeStatus(id, JobStatus{
+				State:   "ERRORED",
+				Message: err.Error(),
+				JobUrl:  statusUrl,
+			})
+			return
+		}
+
+		defer res.Body.Close()
+
+		bMp3, err := io.ReadAll(res.Body)
+		if err != nil {
+			storeStatus(id, JobStatus{
+				State:   "ERRORED",
+				Message: err.Error(),
+				JobUrl:  statusUrl,
+			})
+			return
+		}
+
+		uploadMp3(bMp3, fileName)
+
+		storeStatus(id, JobStatus{
+			State:   "COMPLETED",
+			Message: fmt.Sprintf("Finished uploading file %s", fileName),
+			JobUrl:  statusUrl,
+		})
 	}
-	ssml += `</voice></speak>`
-
-	tokenReq, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s.api.cognitive.microsoft.com/sts/v1.0/issueToken", speechRegion), nil)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to initialize request to get auth token: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	tokenReq.Header.Add("Ocp-Apim-Subscription-Key", speechKey)
-
-	tokenRes, err := http.DefaultClient.Do(tokenReq)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get auth token: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	defer tokenRes.Body.Close()
-	bSpeechAuth, err := io.ReadAll(tokenRes.Body)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get auth token: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	speechAuth := string(bSpeechAuth)
-
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s.tts.speech.microsoft.com/cognitiveservices/v1", speechRegion), strings.NewReader(ssml))
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Can't initialize request to Azure Speech: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", speechAuth))
-	req.Header.Add("Content-Type", "application/ssml+xml")
-	req.Header.Add("Connection", "Keep-Alive")
-	req.Header.Add("X-Microsoft-OutputFormat", "audio-16khz-64kbitrate-mono-mp3")
-	req.Header.Add("User-Agent", "adon-olam-tune-generator")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to make request to Azure Speech: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	if res.StatusCode != 200 {
-		http.Error(w, fmt.Sprintf("Request failed with status %s", res.Status), http.StatusInternalServerError)
-		return
-	}
-
-	defer res.Body.Close()
-
-	bMp3, err := io.ReadAll(res.Body)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error parsing bytes of returned audio file: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	uploadMp3(bMp3, fileName)
-
-	fmt.Fprintf(w, "Uploaded File %s Successfully", fileName)
 }
 
 func uploadMp3(b []byte, fileName string) error {
