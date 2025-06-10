@@ -1,148 +1,125 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
-	"cloud.google.com/go/storage"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/sammyshear/fonspeak"
 	"gitlab.com/gomidi/midi/v2"
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv"
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
-var hertzTable = map[midi.Note]float64{
-	midi.Note(midi.C(0)):  16.351,
-	midi.Note(midi.Db(0)): 17.324,
-	midi.Note(midi.D(0)):  18.354,
-	midi.Note(midi.Eb(0)): 19.445,
-	midi.Note(midi.E(0)):  20.601,
-	midi.Note(midi.F(0)):  21.827,
-	midi.Note(midi.Gb(0)): 23.124,
-	midi.Note(midi.G(0)):  24.499,
-	midi.Note(midi.Ab(0)): 25.956,
-	midi.Note(midi.A(0)):  27.5,
-	midi.Note(midi.Bb(0)): 29.135,
-	midi.Note(midi.B(0)):  30.868,
-	midi.Note(midi.C(1)):  32.703,
-	midi.Note(midi.Db(1)): 34.648,
-	midi.Note(midi.D(1)):  36.708,
-	midi.Note(midi.Eb(1)): 38.891,
-	midi.Note(midi.E(1)):  41.203,
-	midi.Note(midi.F(1)):  43.654,
-	midi.Note(midi.Gb(1)): 46.249,
-	midi.Note(midi.G(1)):  48.999,
-	midi.Note(midi.Ab(1)): 51.913,
-	midi.Note(midi.A(1)):  55,
-	midi.Note(midi.Bb(1)): 58.27,
-	midi.Note(midi.B(1)):  61.735,
-	midi.Note(midi.C(2)):  32.703,
-	midi.Note(midi.Db(2)): 34.648,
-	midi.Note(midi.D(2)):  36.708,
-	midi.Note(midi.Eb(2)): 38.891,
-	midi.Note(midi.E(2)):  41.203,
-	midi.Note(midi.F(2)):  43.654,
-	midi.Note(midi.Gb(2)): 46.249,
-	midi.Note(midi.G(2)):  48.999,
-	midi.Note(midi.Ab(2)): 51.913,
-	midi.Note(midi.A(2)):  55,
-	midi.Note(midi.Bb(2)): 58.27,
-	midi.Note(midi.B(2)):  61.735,
-	midi.Note(midi.C(3)):  32.703,
-	midi.Note(midi.Db(3)): 34.648,
-	midi.Note(midi.D(3)):  36.708,
-	midi.Note(midi.Eb(3)): 38.891,
-	midi.Note(midi.E(3)):  41.203,
-	midi.Note(midi.F(3)):  43.654,
-	midi.Note(midi.Gb(3)): 46.249,
-	midi.Note(midi.G(3)):  48.999,
-	midi.Note(midi.Ab(3)): 51.913,
-	midi.Note(midi.A(3)):  55,
-	midi.Note(midi.Bb(3)): 58.27,
-	midi.Note(midi.B(3)):  61.735,
-	midi.Note(midi.C(4)):  32.703,
-	midi.Note(midi.Db(4)): 34.648,
-	midi.Note(midi.D(4)):  36.708,
-	midi.Note(midi.Eb(4)): 38.891,
-	midi.Note(midi.E(4)):  41.203,
-	midi.Note(midi.F(4)):  43.654,
-	midi.Note(midi.Gb(4)): 46.249,
-	midi.Note(midi.G(4)):  48.999,
-	midi.Note(midi.Ab(4)): 51.913,
-	midi.Note(midi.A(4)):  55,
-	midi.Note(midi.Bb(4)): 58.27,
-	midi.Note(midi.B(4)):  61.735,
-	midi.Note(midi.C(5)):  32.703,
-	midi.Note(midi.Db(5)): 34.648,
-	midi.Note(midi.D(5)):  36.708,
-	midi.Note(midi.Eb(5)): 38.891,
-	midi.Note(midi.E(5)):  41.203,
-	midi.Note(midi.F(5)):  43.654,
-	midi.Note(midi.Gb(5)): 46.249,
-	midi.Note(midi.G(5)):  48.999,
-	midi.Note(midi.Ab(5)): 51.913,
-	midi.Note(midi.A(5)):  55,
-	midi.Note(midi.Bb(5)): 58.27,
-	midi.Note(midi.B(5)):  61.735,
-	midi.Note(midi.C(6)):  32.703,
-	midi.Note(midi.Db(6)): 34.648,
-	midi.Note(midi.D(6)):  36.708,
-	midi.Note(midi.Eb(6)): 38.891,
-	midi.Note(midi.E(6)):  41.203,
-	midi.Note(midi.F(6)):  43.654,
-	midi.Note(midi.Gb(6)): 46.249,
-	midi.Note(midi.G(6)):  48.999,
-	midi.Note(midi.Ab(6)): 51.913,
-	midi.Note(midi.A(6)):  55,
-	midi.Note(midi.Bb(6)): 58.27,
-	midi.Note(midi.B(6)):  61.735,
-	midi.Note(midi.C(7)):  32.703,
-	midi.Note(midi.Db(7)): 34.648,
-	midi.Note(midi.D(7)):  36.708,
-	midi.Note(midi.Eb(7)): 38.891,
-	midi.Note(midi.E(7)):  41.203,
-	midi.Note(midi.F(7)):  43.654,
-	midi.Note(midi.Gb(7)): 46.249,
-	midi.Note(midi.G(7)):  48.999,
-	midi.Note(midi.Ab(7)): 51.913,
-	midi.Note(midi.A(7)):  55,
-	midi.Note(midi.Bb(7)): 58.27,
-	midi.Note(midi.B(7)):  61.735,
+type BufWriteCloser struct {
+	*bufio.Writer
 }
 
-const (
-	ipa = "a.don. o.lam. a.ʃeʁ. ma.lax. be.teʁ.em. kol. je.tsiʁ. niv.ʁa. le.et. naa.sah. vex.ef.tso .kol. a.zai .melex. ʃe.mo. nik.ʁa. ve.ax.a.ʁei. kix.lot. hak.kol. le.vad.do. jim.lox. no.ʁa. ve.hu ha.jah. ve.hu. ho.veh. ve.hu. jih.jeh. bet.if.a.ʁah. ve.hu. e.xad. ve.ein. ʃe.ni. le.ham.ʃil. lo. lehax.bi.ʁah. be.li. ʁe.ʃit. be.li. tax.lit. ve.lo. ha.oz. ve.ham.mis.ʁah. ve.hu. e.li. ve.xai. go.a.li. ve.tsuʁ. xev.li. be.et. tsa.ʁah. ve.hu. nis.si. u.ma.nos. li. me.nat. ko.si. be.jom. ek.ʁa. beja.do. af.kid. ʁu.xi. beet. i.ʃan. ve.a.i.ʁah. ve.im .ʁu.xi. ge.vij.ja.ti. ad.o.nai. li. ve.lo. i.ʁa."
-	t   = `
-אֲד.וֹן. עוֹ.לָם. אֲ.שֶׁר. מָ.לַךְ.
-בְּ.טֶ.רֶם. כָּל. יְ.צִיר. נִבְ.רָא.
-לְ.עֵת. נַעֲ.שָׂה. בְחֶ.פְצוֹ. כֹּל.
-אֲ.זַי. מֶ.לֶךְ. שְׁ.מוֹ. נִ.קְרָא.
-וְ.אַ.חֲ.רֵי. כִּכְ.לוֹת. הַ.כֹּל.
-לְ.בַדּ.וֹ. יִמְ.לוֹךְ. נוֹ.רָא.
-וְ.הוּא. הָ.יָה. וְ.הוּא. הֹ.וֶה.
-וְ.הוּא. יִהְ.יֶה. בְּ.תִ.פְאָ.רָה.
-וְ.הוּא. אֶ.חָד. וְ.אֵין. שֵׁ.נִי.
-לְ.הַמְ.שִׁיל. לוֹ. לְ.הַחְ.בִּי.רָה.
-בְּלִי. רֵא.שִׁית. בְּלִי. תַכְ.לִית.
-וְ.לוֹ. הָ.עֹז. וְ.הַמִּשְׂ.רָה.
-וְ.הוּא. אֵ.לִי. וְ.חַי. גֹּ.אֲלִי.
-וְ.צוּר. חֶ.בְלִי. בְּ.עֵת. צָ.רָה.
-וְ.הוּא. נִ.סִּ.י. וּ.מָנ.וֹס. לִי.
-מְ.נָת. כּוֹ.סִי. בְּ.יוֹם. אֶ.קְרָא.
-בְּ.יָד.וֹ. אַפְ.קִיד. רוּ.חִי.
-בְּ.עֵת. אִי.שַׁן. וְ.אָעִי.רָה.
-וְ.עִם. רוּ.חִי. גְּוִ.יָּ.תִי.
-יְיָ. לִי. וְ.לֹא. אִי.רָא`
-)
+func (bwc *BufWriteCloser) Close() error {
+	return bwc.Flush()
+}
+
+var hertzTable = map[midi.Note]float64{
+	midi.Note(midi.C(1)):  32.70,
+	midi.Note(midi.Db(1)): 34.65,
+	midi.Note(midi.D(1)):  36.71,
+	midi.Note(midi.Eb(1)): 38.89,
+	midi.Note(midi.E(1)):  41.20,
+	midi.Note(midi.F(1)):  43.65,
+	midi.Note(midi.Gb(1)): 46.25,
+	midi.Note(midi.G(1)):  49.00,
+	midi.Note(midi.Ab(1)): 51.91,
+	midi.Note(midi.A(1)):  55.00,
+	midi.Note(midi.Bb(1)): 58.27,
+	midi.Note(midi.B(1)):  61.74,
+	midi.Note(midi.C(2)):  65.41,
+	midi.Note(midi.Db(2)): 69.30,
+	midi.Note(midi.D(2)):  73.42,
+	midi.Note(midi.Eb(2)): 77.78,
+	midi.Note(midi.E(2)):  82.41,
+	midi.Note(midi.F(2)):  87.31,
+	midi.Note(midi.Gb(2)): 92.50,
+	midi.Note(midi.G(2)):  98.00,
+	midi.Note(midi.Ab(2)): 103.83,
+	midi.Note(midi.A(2)):  110.00,
+	midi.Note(midi.Bb(2)): 116.54,
+	midi.Note(midi.B(2)):  123.47,
+	midi.Note(midi.C(3)):  130.81,
+	midi.Note(midi.Db(3)): 138.59,
+	midi.Note(midi.D(3)):  146.83,
+	midi.Note(midi.Eb(3)): 155.56,
+	midi.Note(midi.E(3)):  164.81,
+	midi.Note(midi.F(3)):  174.61,
+	midi.Note(midi.Gb(3)): 185.00,
+	midi.Note(midi.G(3)):  196.00,
+	midi.Note(midi.Ab(3)): 207.65,
+	midi.Note(midi.A(3)):  220.00,
+	midi.Note(midi.Bb(3)): 233.08,
+	midi.Note(midi.B(3)):  246.94,
+	midi.Note(midi.C(4)):  261.63,
+	midi.Note(midi.Db(4)): 277.18,
+	midi.Note(midi.D(4)):  293.66,
+	midi.Note(midi.Eb(4)): 311.13,
+	midi.Note(midi.E(4)):  329.63,
+	midi.Note(midi.F(4)):  349.23,
+	midi.Note(midi.Gb(4)): 369.99,
+	midi.Note(midi.G(4)):  392.00,
+	midi.Note(midi.Ab(4)): 415.30,
+	midi.Note(midi.A(4)):  440.00,
+	midi.Note(midi.Bb(4)): 466.16,
+	midi.Note(midi.B(4)):  493.88,
+	midi.Note(midi.C(5)):  523.25,
+	midi.Note(midi.Db(5)): 554.37,
+	midi.Note(midi.D(5)):  587.33,
+	midi.Note(midi.Eb(5)): 622.25,
+	midi.Note(midi.E(5)):  659.26,
+	midi.Note(midi.F(5)):  698.46,
+	midi.Note(midi.Gb(5)): 739.99,
+	midi.Note(midi.G(5)):  783.99,
+	midi.Note(midi.Ab(5)): 830.61,
+	midi.Note(midi.A(5)):  880.00,
+	midi.Note(midi.Bb(5)): 932.33,
+	midi.Note(midi.B(5)):  987.77,
+	midi.Note(midi.C(6)):  1046.50,
+	midi.Note(midi.Db(6)): 1108.73,
+	midi.Note(midi.D(6)):  1174.66,
+	midi.Note(midi.Eb(6)): 1244.51,
+	midi.Note(midi.E(6)):  1318.51,
+	midi.Note(midi.F(6)):  1396.91,
+	midi.Note(midi.Gb(6)): 1479.98,
+	midi.Note(midi.G(6)):  1567.98,
+	midi.Note(midi.Ab(6)): 1661.22,
+	midi.Note(midi.A(6)):  1760.00,
+	midi.Note(midi.Bb(6)): 1864.66,
+	midi.Note(midi.B(6)):  1975.53,
+	midi.Note(midi.C(7)):  2093.00,
+	midi.Note(midi.Db(7)): 2217.46,
+	midi.Note(midi.D(7)):  2349.32,
+	midi.Note(midi.Eb(7)): 2489.02,
+	midi.Note(midi.E(7)):  2637.02,
+	midi.Note(midi.F(7)):  2793.83,
+	midi.Note(midi.Gb(7)): 2959.96,
+	midi.Note(midi.G(7)):  3135.96,
+	midi.Note(midi.Ab(7)): 3322.44,
+	midi.Note(midi.A(7)):  3520.00,
+	midi.Note(midi.Bb(7)): 3729.31,
+	midi.Note(midi.B(7)):  3951.07,
+}
+
+var syllables = []string{"a", "don", "o", "l@m", "aS", "er", "ma", "laX", "b@", "ter", "em", "kol", "je", "tsir", "niv", "ra", "l@", "et", "na:", "sa", "veX", "ef", "tso", "kol", "az", "ai", "mel", "eX", "Se", "mo", "nik", "ra", "ve", "aX", "a", "rei", "kix", "lot", "ha", "kol", "l@", "va", "do", "jim", "loX", "no", "ra", "v@", "hu", "ha", "ja", "v@", "hu", "ho", "ve", "v@", "hu", "ji", "je", "bet", "if", "ar", "a", "v@", "hu", "eX", "ad", "v@", "ein", "Se", "ni", "l@", "ham", "Sil", "lo", "l@", "haX", "bi", "ra", "bli", "re", "Sit", "bli", "taX", "lit", "v@", "lo", "ha", "oz", "v@", "ham", "mis", "rah", "v@", "hu", "el", "i", "v@", "Xai", "go", "al", "i", "v@", "tsur", "Xev", "li", "b@", "et", "tsa", "ra", "v@", "hu", "nis", "si", "u", "ma", "nos", "li", "m@", "nat", "ko", "si", "b@", "jom", "ek", "ra", "b@", "ja", "do", "af", "kid", "ru", "Xi", "b@", "et", "iS", "an", "v@", "a", "ir", "a", "v@", "im", "ru", "Xi", "g@", "vi", "ja", "ti", "ad", "on", "ai", "li", "v@", "lo", "ir", "a"}
 
 type channel struct {
 	requestID string
@@ -176,23 +153,36 @@ func UploadMidiHandler(ch chan channel) func(http.ResponseWriter, *http.Request)
 
 		w.WriteHeader(http.StatusAccepted)
 
-		w.Write([]byte(fmt.Sprintf(`
+		fmt.Fprintf(w, `
     <div hx-trigger="done" hx-get="%s" hx-swap="outerHTML" hx-target="this">
       <h3 role="status" id="pblabel" tabindex="-1" autofocus>Accepted, Running Operation</h3>
       <div hx-trigger="every 1s" hx-swap="none" hx-get="%s/tick"></div>
-    </div>`, statusUrl, statusUrl)))
+    </div>`, statusUrl, statusUrl)
 	}
 }
 
+func speechMaker(pitchList []float64, w io.WriteCloser) error {
+	syllableList := make([]fonspeak.Params, 0)
+	for i, pitch := range pitchList {
+		syllableList = append(syllableList, fonspeak.Params{Syllable: syllables[i], PitchShift: pitch, Voice: "he"})
+	}
+
+	err := fonspeak.FonspeakPhrase(fonspeak.PhraseParams{
+		Syllables: syllableList,
+		WavFile:   w,
+	}, 15)
+
+	return err
+}
+
 func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
+	_ = wg
 	for c := range ch {
 		id := c.requestID
 		file := c.file
 		header := c.header
 		trackNo := c.trackNo
 		statusUrl := c.statusUrl
-		speechKey := os.Getenv("SPEECH_KEY")
-		speechRegion := os.Getenv("SPEECH_REGION")
 		defer file.Close()
 
 		re := regexp.MustCompile(`/(?i:^.*\.(mid|midi)$)/gm`)
@@ -221,163 +211,98 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 			}
 		})
 
-		text := strings.Split(strings.ReplaceAll(ipa, " ", ""), ".")
-		text2 := strings.Split(strings.ReplaceAll(strings.ReplaceAll(t, "\n", " "), " ", ""), ".")
+		pitchList := make([]float64, 157)
 
-		ssml := `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='he-IL'><voice name='he-IL-AvriNeural'>`
-		noteStart := time.Now()
-		restStart := time.Now()
-		i := 0
-		for _, message := range messages {
-			if i < len(text2) {
-				if message.Is(midi.NoteOnMsg) {
-					var channel, key, velocity uint8
-					message.GetNoteOn(&channel, &key, &velocity)
-					if velocity > 0 {
-						noteStart = time.Now()
-						restDur := time.Since(restStart)
-						ssml += fmt.Sprintf("<mstts:silence type='tailing' value='%dms'/>", restDur.Abs().Milliseconds())
-					} else {
-						restStart = time.Now()
-						noteDur := time.Since(noteStart)
-						length := "medium"
-						if noteDur.Microseconds() < 2 {
-							length = "x-fast"
-						} else if noteDur.Microseconds() > 2 && noteDur.Microseconds() < 5 {
-							length = "fast"
-						} else if noteDur.Seconds() > 5 && noteDur.Microseconds() < 8 {
-							length = "medium"
-						} else if noteDur.Microseconds() > 8 && noteDur.Microseconds() < 12 {
-							length = "slow"
-						} else if noteDur.Seconds() > 12 {
-							length = "x-slow"
-						}
-						_ = length
-						ssml += fmt.Sprintf(`<prosody pitch='%fHz'><phoneme alphabet='ipa' ph='%s'>%s</phoneme></prosody>`, hertzTable[midi.Note(key)], text[i], text2[i])
-						i++
-					}
-				}
+		for len(messages) < len(pitchList) {
+			messages = append(messages, messages...)
+		}
+
+		for i, message := range messages {
+			var channel, key, velocity uint8
+			message.GetNoteOn(&channel, &key, &velocity)
+			if i < 157 {
+				pitchList[i] = hertzTable[midi.Note(key)]
+			} else {
+				break
 			}
 		}
-		ssml += `</voice></speak>`
 
-		tokenReq, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s.api.cognitive.microsoft.com/sts/v1.0/issueToken", speechRegion), nil)
+		var buf bytes.Buffer
+
+		w := &BufWriteCloser{
+			Writer: bufio.NewWriter(&buf),
+		}
+		defer w.Close()
+
+		err := speechMaker(pitchList, w)
 		if err != nil {
 			storeStatus(id, JobStatus{
-				State:   "ERRORED",
+				State:   "FAILED",
 				Message: err.Error(),
 				JobUrl:  statusUrl,
 			})
 			return
 		}
 
-		tokenReq.Header.Add("Ocp-Apim-Subscription-Key", speechKey)
-
-		tokenRes, err := http.DefaultClient.Do(tokenReq)
+		uri, err := uploadWav(buf.Bytes(), fileName)
 		if err != nil {
 			storeStatus(id, JobStatus{
-				State:   "ERRORED",
+				State:   "FAILED",
 				Message: err.Error(),
 				JobUrl:  statusUrl,
 			})
 			return
 		}
-
-		defer tokenRes.Body.Close()
-		bSpeechAuth, err := io.ReadAll(tokenRes.Body)
-		if err != nil {
-			storeStatus(id, JobStatus{
-				State:   "ERRORED",
-				Message: err.Error(),
-				JobUrl:  statusUrl,
-			})
-			return
-		}
-
-		speechAuth := string(bSpeechAuth)
-
-		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://%s.tts.speech.microsoft.com/cognitiveservices/v1", speechRegion), strings.NewReader(ssml))
-		if err != nil {
-			storeStatus(id, JobStatus{
-				State:   "ERRORED",
-				Message: err.Error(),
-				JobUrl:  statusUrl,
-			})
-			return
-		}
-
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", speechAuth))
-		req.Header.Add("Content-Type", "application/ssml+xml")
-		req.Header.Add("Connection", "Keep-Alive")
-		req.Header.Add("X-Microsoft-OutputFormat", "audio-16khz-64kbitrate-mono-mp3")
-		req.Header.Add("User-Agent", "adon-olam-tune-generator")
-
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			storeStatus(id, JobStatus{
-				State:   "ERRORED",
-				Message: err.Error(),
-				JobUrl:  statusUrl,
-			})
-			return
-		}
-
-		if res.StatusCode != 200 {
-			storeStatus(id, JobStatus{
-				State:   "ERRORED",
-				Message: err.Error(),
-				JobUrl:  statusUrl,
-			})
-			return
-		}
-
-		defer res.Body.Close()
-
-		bMp3, err := io.ReadAll(res.Body)
-		if err != nil {
-			storeStatus(id, JobStatus{
-				State:   "ERRORED",
-				Message: err.Error(),
-				JobUrl:  statusUrl,
-			})
-			return
-		}
-
-		uploadMp3(bMp3, fileName)
 
 		storeStatus(id, JobStatus{
 			State:   "COMPLETED",
-			Message: fmt.Sprintf("Finished uploading file %s", fileName),
+			Message: fmt.Sprintf("<audio controls><source src='%s' type='audio/wave' /></audio>", uri),
 			JobUrl:  statusUrl,
 		})
 	}
 }
 
-func uploadMp3(b []byte, fileName string) error {
-	bucket := "mp3_bucket_adon_olam"
-	object := fileName + ".mp3"
+func uploadWav(b []byte, fileName string) (string, error) {
+	bucket := os.Getenv("MINIO_DEFAULT_BUCKETS")
+	endpoint := os.Getenv("MINIO_ENDPOINT")
+	log.Println(bucket)
+	object := fileName + ".wav"
+	log.Println(object)
 	file := bytes.NewReader(b)
 	ctx := context.Background()
-	client, err := storage.NewClient(ctx)
+	client, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewEnvMinio(),
+		Secure: false,
+	})
 	if err != nil {
-		return fmt.Errorf("storage.NewClient: %w", err)
+		return "", fmt.Errorf("minio.New: %w", err)
 	}
-	defer client.Close()
+
+	found, err := client.BucketExists(ctx, bucket)
+	if err != nil {
+		return "", fmt.Errorf("bucket doesn't exist: %w", err)
+	}
+
+	if !found {
+		err = client.MakeBucket(ctx, bucket, minio.MakeBucketOptions{})
+		if err != nil {
+			return "", err
+		}
+	}
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second*50)
 	defer cancel()
-	o := client.Bucket(bucket).Object(object)
 
-	// o = o.If(storage.Conditions{DoesNotExist: true})
-
-	wc := o.NewWriter(ctx)
-	if _, err = io.Copy(wc, file); err != nil {
-		return fmt.Errorf("io.Copy: %w", err)
+	_, err = client.PutObject(ctx, bucket, object, file, file.Size(), minio.PutObjectOptions{ContentType: "audio/wav"})
+	if err != nil {
+		return "", err
 	}
-	if err := wc.Close(); err != nil {
-		return fmt.Errorf("Writer.Close: %w", err)
+
+	uri, err := client.PresignedGetObject(ctx, bucket, object, time.Hour, url.Values{"ContentType": {"audio/wav"}})
+	if err != nil {
+		return "", err
 	}
 
 	fmt.Printf("File %s uploaded successfully", fileName)
-	return nil
+	return uri.String(), err
 }
