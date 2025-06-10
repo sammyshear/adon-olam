@@ -14,7 +14,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o main ./cmd/main.go
+RUN apk add nodejs npm; npm run build; go build -o main ./cmd/main.go
 
 EXPOSE 8080
 
