@@ -57,7 +57,7 @@ func JobStatusTicker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if status.State == "COMPLETED" || status.State == "ERRORED" || status.State == "FAILED" {
+	if status.State == "COMPLETED" || status.State == "ERRORED" {
 		w.Header().Add("HX-Trigger", "done")
 		return
 	}

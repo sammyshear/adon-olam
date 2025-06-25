@@ -237,7 +237,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 		err := speechMaker(pitchList, w)
 		if err != nil {
 			storeStatus(id, JobStatus{
-				State:   "FAILED",
+				State:   "ERRORED",
 				Message: err.Error(),
 				JobUrl:  statusUrl,
 			})
@@ -247,7 +247,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 		uri, err := uploadWav(buf.Bytes(), fileName)
 		if err != nil {
 			storeStatus(id, JobStatus{
-				State:   "FAILED",
+				State:   "ERRORED",
 				Message: err.Error(),
 				JobUrl:  statusUrl,
 			})
@@ -273,7 +273,7 @@ func uploadWav(b []byte, fileName string) (string, error) {
 	ctx := context.Background()
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewEnvMinio(),
-		Secure: false,
+		Secure: true,
 	})
 	if err != nil {
 		return "", fmt.Errorf("minio.New: %w", err)
