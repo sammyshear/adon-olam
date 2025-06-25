@@ -12,7 +12,7 @@ RUN go mod download
 
 COPY . .
 
-RUN apk add nodejs npm; npm i; npm run build; go build -o main ./cmd/main.go
+RUN apk add nodejs npm --no-cache; npm i; npm run build; go build -o main ./cmd/main.go
 
 EXPOSE 8080
 

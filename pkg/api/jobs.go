@@ -28,7 +28,7 @@ func getStatus(requestID string) (JobStatus, error) {
 		return v, nil
 	}
 
-	return JobStatus{}, fmt.Errorf("Request id not found\n")
+	return JobStatus{}, fmt.Errorf("request id not found")
 }
 
 func generateRequestID() string {
@@ -57,7 +57,7 @@ func JobStatusTicker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if status.State == "COMPLETED" || status.State == "ERRORED" {
+	if status.State == "COMPLETED" || status.State == "ERRORED" || status.State == "FAILED" {
 		w.Header().Add("HX-Trigger", "done")
 		return
 	}

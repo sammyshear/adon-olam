@@ -266,6 +266,7 @@ func uploadWav(b []byte, fileName string) (string, error) {
 	bucket := os.Getenv("MINIO_DEFAULT_BUCKETS")
 	endpoint := os.Getenv("MINIO_ENDPOINT")
 	log.Println(bucket)
+	log.Println(endpoint)
 	object := fileName + ".wav"
 	log.Println(object)
 	file := bytes.NewReader(b)
