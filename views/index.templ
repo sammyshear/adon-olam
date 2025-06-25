@@ -2,7 +2,7 @@ package views
 
 templ Index() {
 	@BaseLayout(PageInfo{Title: "Adon Olam Tune Generator"}) {
-		<main>
+		<main class="grid h-screen place-items-center">
 			<form hx-encoding="multipart/form-data" hx-post="/api/upload" hx-swap="outerHTML">
 				<input type="file" name="uploadFile"/>
 				<label for="trackNo">Track Number</label>
