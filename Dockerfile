@@ -18,9 +18,10 @@ RUN go mod download
 
 COPY . .
 
+COPY --from=buildbun /buildbun/static ./static
+
 RUN go tool templ generate; go build -o main ./cmd/main.go
 
-COPY --from=buildbun /buildbun/static ./static
 
 EXPOSE 8080
 CMD [ "/build/main" ]
