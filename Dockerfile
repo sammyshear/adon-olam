@@ -1,6 +1,6 @@
 FROM oven/bun:alpine AS buildbun
 
-WORKDIR /build
+WORKDIR /buildbun
 
 COPY . .
 
@@ -20,7 +20,7 @@ COPY . .
 
 RUN go tool templ generate; go build -o main ./cmd/main.go
 
-COPY --from=buildbun /build/static ./static
+COPY --from=buildbun /buildbun/static ./static
 
 EXPOSE 8080
 CMD [ "/build/main" ]
