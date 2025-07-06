@@ -265,6 +265,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 func uploadWav(b []byte, fileName string) (string, error) {
 	bucket := os.Getenv("MINIO_DEFAULT_BUCKETS")
 	endpoint := os.Getenv("MINIO_ENDPOINT")
+	secure := os.Getenv("MINIO_SECURE") == "true"
 	log.Println(bucket)
 	log.Println(endpoint)
 	object := fileName + ".wav"
@@ -273,7 +274,7 @@ func uploadWav(b []byte, fileName string) (string, error) {
 	ctx := context.Background()
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewEnvMinio(),
-		Secure: true,
+		Secure: secure,
 	})
 	if err != nil {
 		return "", fmt.Errorf("minio.New: %w", err)

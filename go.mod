@@ -7,7 +7,7 @@ require (
 	github.com/air-verse/air v1.52.3
 	github.com/google/uuid v1.6.0
 	github.com/minio/minio-go/v7 v7.0.92
-	github.com/sammyshear/fonspeak v1.0.0
+	github.com/sammyshear/fonspeak v1.0.1
 	gitlab.com/gomidi/midi/v2 v2.2.1
 )
 
@@ -46,7 +46,6 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
-	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/tdewolff/parse/v2 v2.7.12 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
