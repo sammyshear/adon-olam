@@ -7,7 +7,7 @@ require (
 	github.com/air-verse/air v1.52.3
 	github.com/google/uuid v1.6.0
 	github.com/minio/minio-go/v7 v7.0.92
-	github.com/sammyshear/fonspeak v1.0.1
+	github.com/sammyshear/fonspeak v1.1.0
 	gitlab.com/gomidi/midi/v2 v2.2.1
 )
 
@@ -25,9 +25,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/go-audio/audio v1.0.0 // indirect
-	github.com/go-audio/riff v1.0.0 // indirect
-	github.com/go-audio/wav v1.1.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
@@ -49,13 +46,13 @@ require (
 	github.com/tdewolff/parse/v2 v2.7.12 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
+	golang.org/x/image v0.25.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/tools v0.32.0 // indirect
-	gonum.org/v1/gonum v0.16.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 )
 
