@@ -192,7 +192,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 			storeStatus(id, JobStatus{
 				State:   "ERRORED",
 				Message: "Not a midi file.",
-				JobUrl:  statusURL,
+				JobURL:  statusURL,
 			})
 			return
 		}
