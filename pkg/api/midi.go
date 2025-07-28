@@ -239,7 +239,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 			storeStatus(id, JobStatus{
 				State:   "ERRORED",
 				Message: err.Error(),
-				JobUrl:  statusURL,
+				JobURL:  statusURL,
 			})
 			return
 		}
@@ -249,7 +249,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 			storeStatus(id, JobStatus{
 				State:   "ERRORED",
 				Message: err.Error(),
-				JobUrl:  statusURL,
+				JobURL:  statusURL,
 			})
 			return
 		}
@@ -257,7 +257,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 		storeStatus(id, JobStatus{
 			State:   "COMPLETED",
 			Message: fmt.Sprintf("<audio controls><source src='%s' type='audio/wave' /></audio>", uri),
-			JobUrl:  statusURL,
+			JobURL:  statusURL,
 		})
 	}
 }
