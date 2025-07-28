@@ -11,7 +11,7 @@ import (
 type JobStatus struct {
 	State   string `json:"state"`
 	Message string `json:"message,omitempty"`
-	JobUrl  string `json:"jobUrl,omitempty"`
+	JobURL  string `json:"jobUrl,omitempty"`
 }
 
 var RequestStatus map[string]JobStatus

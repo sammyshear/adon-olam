@@ -125,17 +125,17 @@ type channel struct {
 	requestID string
 	file      multipart.File
 	header    *multipart.FileHeader
-	statusUrl string
+	statusURL string
 	trackNo   int
 }
 
 func UploadMidiHandler(ch chan channel) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		statusUrl := "/api/status/"
+		statusURL := "/api/status/"
 		requestID := generateRequestID()
 		storeStatus(requestID, JobStatus{State: "NEW"})
 
-		statusUrl += requestID
+		statusURL += requestID
 
 		r.ParseMultipartForm(10 << 20) // 10 MB
 		file, header, err := r.FormFile("uploadFile")
@@ -147,9 +147,9 @@ func UploadMidiHandler(ch chan channel) func(http.ResponseWriter, *http.Request)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-		ch <- channel{requestID, file, header, statusUrl, trackNo}
+		ch <- channel{requestID, file, header, statusURL, trackNo}
 
-		w.Header().Add("X-Status-URL", statusUrl)
+		w.Header().Add("X-Status-URL", statusURL)
 
 		w.WriteHeader(http.StatusAccepted)
 
@@ -157,14 +157,14 @@ func UploadMidiHandler(ch chan channel) func(http.ResponseWriter, *http.Request)
     <div hx-trigger="done" hx-get="%s" hx-swap="outerHTML" hx-target="this">
       <h3 role="status" id="pblabel" tabindex="-1" autofocus>Accepted, Running Operation</h3>
       <div hx-trigger="every 1s" hx-swap="none" hx-get="%s/tick"></div>
-    </div>`, statusUrl, statusUrl)
+    </div>`, statusURL, statusURL)
 	}
 }
 
 func speechMaker(pitchList []float64, w io.WriteCloser) error {
 	syllableList := make([]fonspeak.Params, 0)
 	for i, pitch := range pitchList {
-		syllableList = append(syllableList, fonspeak.Params{Syllable: syllables[i], PitchShift: pitch, Voice: "he"})
+		syllableList = append(syllableList, fonspeak.Params{Syllable: syllables[i], PitchShift: pitch, Voice: "he", Wpm: 160})
 	}
 
 	err := fonspeak.FonspeakPhrase(fonspeak.PhraseParams{
@@ -182,7 +182,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 		file := c.file
 		header := c.header
 		trackNo := c.trackNo
-		statusUrl := c.statusUrl
+		statusURL := c.statusURL
 		defer file.Close()
 
 		re := regexp.MustCompile(`/(?i:^.*\.(mid|midi)$)/gm`)
@@ -192,7 +192,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 			storeStatus(id, JobStatus{
 				State:   "ERRORED",
 				Message: "Not a midi file.",
-				JobUrl:  statusUrl,
+				JobUrl:  statusURL,
 			})
 			return
 		}
@@ -239,7 +239,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 			storeStatus(id, JobStatus{
 				State:   "ERRORED",
 				Message: err.Error(),
-				JobUrl:  statusUrl,
+				JobUrl:  statusURL,
 			})
 			return
 		}
@@ -249,7 +249,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 			storeStatus(id, JobStatus{
 				State:   "ERRORED",
 				Message: err.Error(),
-				JobUrl:  statusUrl,
+				JobUrl:  statusURL,
 			})
 			return
 		}
@@ -257,7 +257,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 		storeStatus(id, JobStatus{
 			State:   "COMPLETED",
 			Message: fmt.Sprintf("<audio controls><source src='%s' type='audio/wave' /></audio>", uri),
-			JobUrl:  statusUrl,
+			JobUrl:  statusURL,
 		})
 	}
 }
