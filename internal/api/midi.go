@@ -161,10 +161,10 @@ func UploadMidiHandler(ch chan channel) func(http.ResponseWriter, *http.Request)
 	}
 }
 
-func speechMaker(pitchList []float64, w io.WriteCloser) error {
+func speechMaker(pitchList []float64, wpmList []float64, w io.WriteCloser) error {
 	syllableList := make([]fonspeak.Params, 0)
 	for i, pitch := range pitchList {
-		syllableList = append(syllableList, fonspeak.Params{Syllable: syllables[i], PitchShift: pitch, Voice: "he", Wpm: 160})
+		syllableList = append(syllableList, fonspeak.Params{Syllable: syllables[i], PitchShift: pitch, Voice: "he", Wpm: int(wpmList[i])})
 	}
 
 	err := fonspeak.FonspeakPhrase(fonspeak.PhraseParams{
@@ -198,23 +198,55 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 		}
 
 		var messages []smf.Message
+		var lenList []int
 
+		events := []smf.TrackEvent{}
 		smf.ReadTracksFrom(file).Do(func(te smf.TrackEvent) {
+			events = append(events, te)
+		})
+
+		for i, te := range events {
 			if te.Message.IsMeta() {
 				fmt.Printf("[%v] @%vms %s\n", te.TrackNo, te.AbsMicroSeconds/1000, te.Message.String())
-			} else {
-				if te.TrackNo == trackNo {
-					if te.Message.Is(midi.NoteOnMsg) {
-						messages = append(messages, te.Message)
+			} else if te.TrackNo == trackNo && te.Message.Is(midi.NoteOnMsg) {
+				messages = append(messages, te.Message)
+				var channel, key, velocity uint8
+				te.Message.GetNoteOn(&channel, &key, &velocity)
+				noteOnTime := te.AbsMicroSeconds
+
+				// Search for corresponding NoteOff
+				for j := i + 1; j < len(events); j++ {
+					te2 := events[j]
+					if te2.TrackNo == trackNo && te2.AbsMicroSeconds > noteOnTime && te2.Message.Is(midi.NoteOffMsg) {
+						var channel2, keyOff, velocity2 uint8
+						te2.Message.GetNoteOff(&channel2, &keyOff, &velocity2)
+						if keyOff == key {
+							duration := (te2.AbsMicroSeconds - noteOnTime) / 1000 // ms
+							lenList = append(lenList, int(duration))
+							break
+						}
 					}
 				}
 			}
-		})
+		}
 
 		pitchList := make([]float64, 157)
 
 		for len(messages) < len(pitchList) {
 			messages = append(messages, messages...)
+			lenList = append(lenList, lenList...)
+		}
+
+		wpmList := make([]float64, len(lenList))
+		for i, length := range lenList {
+			if length > 0 {
+				wpmList[i] = 60000.0 / float64(length)
+				if wpmList[i] > 190 {
+					wpmList[i] = 190 // Cap at  190 WPM
+				}
+			} else {
+				wpmList[i] = 160
+			}
 		}
 
 		for i, message := range messages {
@@ -234,7 +266,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 		}
 		defer w.Close()
 
-		err := speechMaker(pitchList, w)
+		err := speechMaker(pitchList, wpmList, w)
 		if err != nil {
 			storeStatus(id, JobStatus{
 				State:   "ERRORED",

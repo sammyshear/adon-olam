@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/sammyshear/adon-olam/pkg/api"
+	"github.com/sammyshear/adon-olam/internal/api"
 )
 
 func main() {
