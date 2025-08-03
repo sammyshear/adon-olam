@@ -10,7 +10,8 @@ services:
     ports:
       - "8080:8080"
   minio:
-    image: quay.io/minio/minio
+    image: quay.io/minio/minio:latest
+    pull_policy: always
     command: server --console-address ":9001" /minio/data
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
