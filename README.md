@@ -72,7 +72,7 @@ a don o l@m aS er ma laX b@ ter em kol je tsir niv ra...
 3. **Global Octave Cap**: Calculates the highest pitch in the melody and applies octave transposition (down) so the highest pitch is ≤ maxhz (default 500 Hz)
 4. **Syllable Alignment**: 
    - If more syllables than notes: repeats the melody to cover all syllables
-   - If more notes than syllables: duplicates the last syllable (melisma)
+   - If more notes than syllables: distributes syllables evenly across notes (each syllable can span multiple notes for melisma)
 5. **Intelligent Timing Allocation** (new):
    - Breaks each syllable into phonemes (consonants and vowels)
    - Distributes the MIDI note duration across the syllable's phonemes
@@ -87,13 +87,18 @@ a don o l@m aS er ma laX b@ ter em kol je tsir niv ra...
 The per-syllable timing strategy intelligently distributes MIDI note durations across syllables to create more natural-sounding speech:
 
 - **Vowel Prioritization**: Extra duration is preferentially allocated to vowel phonemes within each syllable
-- **Natural Distribution**: Instead of dumping all leftover time into the last phoneme, duration is spread across the entire phrase
+- **Natural Distribution**: Syllables are distributed evenly across notes. When a syllable spans multiple notes (melisma), the vowels within that syllable are extended across those notes
 - **Bounds Enforcement**: Respects minimum and maximum duration constraints for vowels (50ms-1000ms) and consonants (30ms-200ms)
 - **Smart Handling**: Handles edge cases like syllables without clear vowels, extremely short or long notes
 
-**Example**: For a 1-second note mapped to syllable "ba":
+**Example 1**: For a 1-second note mapped to syllable "ba":
 - Legacy approach: "b" gets base duration (~80ms), "a" gets all remaining time (~920ms)
-- Per-syllable approach: "b" gets minimum (~30ms), "a" gets the rest distributed naturally (~970ms), respecting vowel lengthening principles
+- Per-syllable approach: "b" gets minimum (~30ms), "a" gets the rest distributed naturally (~970ms)
+
+**Example 2**: For 4 notes mapped to 2 syllables ["a", "don"]:
+- Notes 1-2 → "a" (vowel extended across 2 notes)
+- Notes 3-4 → "don" (vowel "o" extended across 2 notes)
+- Instead of: Note 1 → "a", Notes 2-4 → "don" (old behavior)
 
 #### Last-Phoneme Strategy (Legacy)
 

@@ -103,7 +103,8 @@ func RepeatMelodyToCoverSyllables(notes []Note, syllableCount int) []Note {
 }
 
 // AlignSyllablesToMelody aligns syllables to notes
-// If there are more notes than syllables, duplicate the last syllable (melisma)
+// If there are more notes than syllables, distributes syllables evenly across notes
+// Each syllable can be mapped to multiple consecutive notes (melisma)
 // If there are more syllables than notes, the melody should have been repeated already
 func AlignSyllablesToMelody(syllables []string, noteCount int) []string {
 	if len(syllables) == 0 {
@@ -114,12 +115,19 @@ func AlignSyllablesToMelody(syllables []string, noteCount int) []string {
 		return syllables[:noteCount]
 	}
 
-	// Extend syllables by repeating the last one
+	// Distribute syllables evenly across notes
+	// Each syllable gets roughly noteCount/syllableCount notes
 	result := make([]string, noteCount)
-	copy(result, syllables)
-	lastSyllable := syllables[len(syllables)-1]
-	for i := len(syllables); i < noteCount; i++ {
-		result[i] = lastSyllable
+	
+	notesPerSyllable := float64(noteCount) / float64(len(syllables))
+	
+	for i := 0; i < noteCount; i++ {
+		// Determine which syllable this note belongs to
+		syllableIdx := int(float64(i) / notesPerSyllable)
+		if syllableIdx >= len(syllables) {
+			syllableIdx = len(syllables) - 1
+		}
+		result[i] = syllables[syllableIdx]
 	}
 
 	return result

@@ -93,7 +93,7 @@ func runSynthesis(midiPath, ipaPath, outPath, voice string, maxHz float64, track
 
 	// 5. Align syllables to melody
 	// If more syllables than notes, repeat melody
-	// If more notes than syllables, duplicate last syllable
+	// If more notes than syllables, distribute syllables evenly
 	var alignedNotes []fonspeak_midi.Note
 	var alignedSyllables []string
 
@@ -103,12 +103,12 @@ func runSynthesis(midiPath, ipaPath, outPath, voice string, maxHz float64, track
 		alignedSyllables = syllables
 		fmt.Printf("Repeated melody to match %d syllables\n", len(syllables))
 	} else {
-		// Use all notes and extend syllables if needed
+		// Use all notes and distribute syllables evenly across them
 		alignedNotes = notes
 		alignedSyllables = fonspeak_midi.AlignSyllablesToMelody(syllables, len(notes))
 		if len(alignedSyllables) > len(syllables) {
-			fmt.Printf("Extended syllables with melisma (last syllable repeated %d times)\n",
-				len(alignedSyllables)-len(syllables))
+			fmt.Printf("Distributed %d syllables across %d notes (syllables span multiple notes for melisma)\n",
+				len(syllables), len(notes))
 		}
 	}
 

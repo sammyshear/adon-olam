@@ -107,14 +107,14 @@ func TestAlignSyllablesToMelody(t *testing.T) {
 	syllables := []string{"a", "b", "c"}
 
 	tests := []struct {
-		name      string
-		noteCount int
-		wantLen   int
-		wantLast  string
+		name       string
+		noteCount  int
+		wantLen    int
+		wantResult []string
 	}{
-		{"Exact match", 3, 3, "c"},
-		{"More notes (melisma)", 5, 5, "c"}, // last syllable repeated
-		{"Fewer notes", 2, 2, "b"},
+		{"Exact match", 3, 3, []string{"a", "b", "c"}},
+		{"More notes (melisma)", 5, 5, []string{"a", "a", "b", "b", "c"}}, // syllables distributed evenly
+		{"Fewer notes", 2, 2, []string{"a", "b"}},
 	}
 
 	for _, tt := range tests {
@@ -123,8 +123,13 @@ func TestAlignSyllablesToMelody(t *testing.T) {
 			if len(got) != tt.wantLen {
 				t.Errorf("AlignSyllablesToMelody() returned %d syllables, want %d", len(got), tt.wantLen)
 			}
-			if got[len(got)-1] != tt.wantLast {
-				t.Errorf("Last syllable = %s, want %s", got[len(got)-1], tt.wantLast)
+			if tt.wantResult != nil {
+				for i, want := range tt.wantResult {
+					if got[i] != want {
+						t.Errorf("Position %d: got %s, want %s. Full result: %v", i, got[i], want, got)
+						break
+					}
+				}
 			}
 		})
 	}
