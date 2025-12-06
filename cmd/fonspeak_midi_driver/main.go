@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 
 	"github.com/sammyshear/adon-olam/internal/fonspeak_midi"
@@ -82,7 +83,7 @@ func runSynthesis(midiPath, ipaPath, outPath, voice string, maxHz float64, track
 	if octaveDrop > 0 {
 		fmt.Printf("Original max frequency: %.2f Hz\n", maxFreq)
 		fmt.Printf("Applying global octave drop: %d octaves\n", octaveDrop)
-		newMaxFreq := maxFreq / float64(uint(1)<<uint(octaveDrop))
+		newMaxFreq := maxFreq / math.Pow(2, float64(octaveDrop))
 		fmt.Printf("New max frequency: %.2f Hz\n", newMaxFreq)
 	} else {
 		fmt.Printf("Max frequency: %.2f Hz (no octave drop needed)\n", maxFreq)

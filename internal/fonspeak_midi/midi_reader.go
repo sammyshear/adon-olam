@@ -97,7 +97,8 @@ func ExtractMonophonicMelody(reader io.Reader, trackNo int) ([]Note, error) {
 	})
 
 	// Collapse simultaneous notes (chords) to lowest pitch
-	// Group notes that start within a small time window (e.g., 10ms) as simultaneous
+	// Group notes that start within a small time window as simultaneous
+	// 10ms threshold chosen to account for MIDI timing jitter while still detecting true chords
 	const simultaneousThreshold = 10 // milliseconds
 
 	result := []Note{}
