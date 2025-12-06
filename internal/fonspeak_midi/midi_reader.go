@@ -16,12 +16,9 @@ func ExtractMonophonicMelody(reader io.Reader, trackNo int) ([]Note, error) {
 	var events []smf.TrackEvent
 
 	// Read all track events from the MIDI file
-	err := smf.ReadTracksFrom(reader).Do(func(te smf.TrackEvent) {
+	smf.ReadTracksFrom(reader).Do(func(te smf.TrackEvent) {
 		events = append(events, te)
 	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to read MIDI tracks: %w", err)
-	}
 
 	if len(events) == 0 {
 		return nil, fmt.Errorf("no MIDI events found")
