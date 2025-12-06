@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -18,10 +17,8 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/sammyshear/adon-olam/internal/fonspeak_midi"
 	"github.com/sammyshear/fonspeak"
-	"gitlab.com/gomidi/midi/v2"
-	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv"
-	"gitlab.com/gomidi/midi/v2/smf"
 )
 
 type BufWriteCloser struct {
@@ -32,93 +29,7 @@ func (bwc *BufWriteCloser) Close() error {
 	return bwc.Flush()
 }
 
-var hertzTable = map[midi.Note]float64{
-	midi.Note(midi.C(1)):  32.70,
-	midi.Note(midi.Db(1)): 34.65,
-	midi.Note(midi.D(1)):  36.71,
-	midi.Note(midi.Eb(1)): 38.89,
-	midi.Note(midi.E(1)):  41.20,
-	midi.Note(midi.F(1)):  43.65,
-	midi.Note(midi.Gb(1)): 46.25,
-	midi.Note(midi.G(1)):  49.00,
-	midi.Note(midi.Ab(1)): 51.91,
-	midi.Note(midi.A(1)):  55.00,
-	midi.Note(midi.Bb(1)): 58.27,
-	midi.Note(midi.B(1)):  61.74,
-	midi.Note(midi.C(2)):  65.41,
-	midi.Note(midi.Db(2)): 69.30,
-	midi.Note(midi.D(2)):  73.42,
-	midi.Note(midi.Eb(2)): 77.78,
-	midi.Note(midi.E(2)):  82.41,
-	midi.Note(midi.F(2)):  87.31,
-	midi.Note(midi.Gb(2)): 92.50,
-	midi.Note(midi.G(2)):  98.00,
-	midi.Note(midi.Ab(2)): 103.83,
-	midi.Note(midi.A(2)):  110.00,
-	midi.Note(midi.Bb(2)): 116.54,
-	midi.Note(midi.B(2)):  123.47,
-	midi.Note(midi.C(3)):  130.81,
-	midi.Note(midi.Db(3)): 138.59,
-	midi.Note(midi.D(3)):  146.83,
-	midi.Note(midi.Eb(3)): 155.56,
-	midi.Note(midi.E(3)):  164.81,
-	midi.Note(midi.F(3)):  174.61,
-	midi.Note(midi.Gb(3)): 185.00,
-	midi.Note(midi.G(3)):  196.00,
-	midi.Note(midi.Ab(3)): 207.65,
-	midi.Note(midi.A(3)):  220.00,
-	midi.Note(midi.Bb(3)): 233.08,
-	midi.Note(midi.B(3)):  246.94,
-	midi.Note(midi.C(4)):  261.63,
-	midi.Note(midi.Db(4)): 277.18,
-	midi.Note(midi.D(4)):  293.66,
-	midi.Note(midi.Eb(4)): 311.13,
-	midi.Note(midi.E(4)):  329.63,
-	midi.Note(midi.F(4)):  349.23,
-	midi.Note(midi.Gb(4)): 369.99,
-	midi.Note(midi.G(4)):  392.00,
-	midi.Note(midi.Ab(4)): 415.30,
-	midi.Note(midi.A(4)):  440.00,
-	midi.Note(midi.Bb(4)): 466.16,
-	midi.Note(midi.B(4)):  493.88,
-	midi.Note(midi.C(5)):  523.25,
-	midi.Note(midi.Db(5)): 554.37,
-	midi.Note(midi.D(5)):  587.33,
-	midi.Note(midi.Eb(5)): 622.25,
-	midi.Note(midi.E(5)):  659.26,
-	midi.Note(midi.F(5)):  698.46,
-	midi.Note(midi.Gb(5)): 739.99,
-	midi.Note(midi.G(5)):  783.99,
-	midi.Note(midi.Ab(5)): 830.61,
-	midi.Note(midi.A(5)):  880.00,
-	midi.Note(midi.Bb(5)): 932.33,
-	midi.Note(midi.B(5)):  987.77,
-	midi.Note(midi.C(6)):  1046.50,
-	midi.Note(midi.Db(6)): 1108.73,
-	midi.Note(midi.D(6)):  1174.66,
-	midi.Note(midi.Eb(6)): 1244.51,
-	midi.Note(midi.E(6)):  1318.51,
-	midi.Note(midi.F(6)):  1396.91,
-	midi.Note(midi.Gb(6)): 1479.98,
-	midi.Note(midi.G(6)):  1567.98,
-	midi.Note(midi.Ab(6)): 1661.22,
-	midi.Note(midi.A(6)):  1760.00,
-	midi.Note(midi.Bb(6)): 1864.66,
-	midi.Note(midi.B(6)):  1975.53,
-	midi.Note(midi.C(7)):  2093.00,
-	midi.Note(midi.Db(7)): 2217.46,
-	midi.Note(midi.D(7)):  2349.32,
-	midi.Note(midi.Eb(7)): 2489.02,
-	midi.Note(midi.E(7)):  2637.02,
-	midi.Note(midi.F(7)):  2793.83,
-	midi.Note(midi.Gb(7)): 2959.96,
-	midi.Note(midi.G(7)):  3135.96,
-	midi.Note(midi.Ab(7)): 3322.44,
-	midi.Note(midi.A(7)):  3520.00,
-	midi.Note(midi.Bb(7)): 3729.31,
-	midi.Note(midi.B(7)):  3951.07,
-}
-
+// syllables contains the Adon Olam lyrics in X-SAMPA format
 var syllables = []string{"a", "don", "o", "l@m", "aS", "er", "ma", "laX", "b@", "ter", "em", "kol", "je", "tsir", "niv", "ra", "l@", "et", "na:", "sa", "veX", "ef", "tso", "kol", "az", "ai", "mel", "eX", "Se", "mo", "nik", "ra", "ve", "aX", "a", "rei", "kix", "lot", "ha", "kol", "l@", "va", "do", "jim", "loX", "no", "ra", "v@", "hu", "ha", "ja", "v@", "hu", "ho", "ve", "v@", "hu", "ji", "je", "bet", "if", "ar", "a", "v@", "hu", "eX", "ad", "v@", "ein", "Se", "ni", "l@", "ham", "Sil", "lo", "l@", "haX", "bi", "ra", "bli", "re", "Sit", "bli", "taX", "lit", "v@", "lo", "ha", "oz", "v@", "ham", "mis", "rah", "v@", "hu", "el", "i", "v@", "Xai", "go", "al", "i", "v@", "tsur", "Xev", "li", "b@", "et", "tsa", "ra", "v@", "hu", "nis", "si", "u", "ma", "nos", "li", "m@", "nat", "ko", "si", "b@", "jom", "ek", "ra", "b@", "ja", "do", "af", "kid", "ru", "Xi", "b@", "et", "iS", "an", "v@", "a", "ir", "a", "v@", "im", "ru", "Xi", "g@", "vi", "ja", "ti", "ad", "on", "ai", "li", "v@", "lo", "ir", "a"}
 
 type channel struct {
@@ -161,20 +72,6 @@ func UploadMidiHandler(ch chan channel) func(http.ResponseWriter, *http.Request)
 	}
 }
 
-func speechMaker(pitchList []float64, wpmList []float64, w io.WriteCloser) error {
-	syllableList := make([]fonspeak.Params, 0)
-	for i, pitch := range pitchList {
-		syllableList = append(syllableList, fonspeak.Params{Syllable: syllables[i], PitchShift: pitch, Voice: "he", Wpm: int(wpmList[i])})
-	}
-
-	err := fonspeak.FonspeakPhrase(fonspeak.PhraseParams{
-		Syllables: syllableList,
-		WavFile:   w,
-	}, 15)
-
-	return err
-}
-
 func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 	_ = wg
 	for c := range ch {
@@ -197,76 +94,76 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 			return
 		}
 
-		var messages []smf.Message
-		var lenList []int
-
-		events := []smf.TrackEvent{}
-		smf.ReadTracksFrom(file).Do(func(te smf.TrackEvent) {
-			events = append(events, te)
-		})
-
-		for i, te := range events {
-			if te.Message.IsMeta() {
-				fmt.Printf("[%v] @%vms %s\n", te.TrackNo, te.AbsMicroSeconds/1000, te.Message.String())
-			} else if te.TrackNo == trackNo && te.Message.Is(midi.NoteOnMsg) {
-				messages = append(messages, te.Message)
-				var channel, key, velocity uint8
-				te.Message.GetNoteOn(&channel, &key, &velocity)
-				noteOnTime := te.AbsMicroSeconds
-
-				// Search for corresponding NoteOff
-				for j := i + 1; j < len(events); j++ {
-					te2 := events[j]
-					if te2.TrackNo == trackNo && te2.AbsMicroSeconds > noteOnTime && te2.Message.Is(midi.NoteOffMsg) {
-						var channel2, keyOff, velocity2 uint8
-						te2.Message.GetNoteOff(&channel2, &keyOff, &velocity2)
-						if keyOff == key {
-							duration := (te2.AbsMicroSeconds - noteOnTime) / 1000 // ms
-							lenList = append(lenList, int(duration))
-							break
-						}
-					}
-				}
-			}
+		// Extract monophonic melody using the new fonspeak_midi package
+		notes, err := fonspeak_midi.ExtractMonophonicMelody(file, trackNo)
+		if err != nil {
+			storeStatus(id, JobStatus{
+				State:   "ERRORED",
+				Message: fmt.Sprintf("Failed to extract melody: %v", err),
+				JobURL:  statusURL,
+			})
+			return
 		}
 
-		pitchList := make([]float64, 157)
-
-		for len(messages) < len(pitchList) {
-			messages = append(messages, messages...)
-			lenList = append(lenList, lenList...)
+		if len(notes) == 0 {
+			storeStatus(id, JobStatus{
+				State:   "ERRORED",
+				Message: "No notes found in the specified track",
+				JobURL:  statusURL,
+			})
+			return
 		}
 
-		wpmList := make([]float64, len(lenList))
-		for i, length := range lenList {
-			if length > 0 {
-				wpmList[i] = 60000.0 / float64(length)
-				if wpmList[i] > 190 {
-					wpmList[i] = 190 // Cap at  190 WPM
-				}
-			} else {
-				wpmList[i] = 160
-			}
+		// Apply global octave cap (max 500 Hz)
+		const maxHz = 500.0
+		maxFreq := fonspeak_midi.FindMaxFrequency(notes)
+		octaveDrop := fonspeak_midi.ComputeGlobalOctaveDropFromHz(maxFreq, maxHz)
+
+		// Align notes to syllables (157 syllables for Adon Olam)
+		syllableCount := len(syllables)
+		var alignedNotes []fonspeak_midi.Note
+		var alignedSyllables []string
+
+		if syllableCount > len(notes) {
+			// Repeat melody to cover all syllables
+			alignedNotes = fonspeak_midi.RepeatMelodyToCoverSyllables(notes, syllableCount)
+			alignedSyllables = syllables
+		} else {
+			// Use all notes and extend syllables if needed
+			alignedNotes = notes
+			alignedSyllables = fonspeak_midi.AlignSyllablesToMelody(syllables, len(notes))
 		}
 
-		for i, message := range messages {
-			var channel, key, velocity uint8
-			message.GetNoteOn(&channel, &key, &velocity)
-			if i < 157 {
-				pitchList[i] = hertzTable[midi.Note(key)]
-			} else {
-				break
-			}
+		// Build syllable parameters for fonspeak
+		syllableList := make([]fonspeak.Params, 0, len(alignedNotes))
+
+		for i, note := range alignedNotes {
+			// Convert MIDI note to Hz with global octave drop
+			pitchHz := fonspeak_midi.MIDINoteToHz(note.MIDINote, -octaveDrop)
+
+			// Calculate WPM from duration
+			wpm := fonspeak_midi.WPMFromDuration(note.Duration)
+
+			syllableList = append(syllableList, fonspeak.Params{
+				Syllable:   alignedSyllables[i],
+				PitchShift: pitchHz,
+				Voice:      "he",
+				Wpm:        wpm,
+			})
 		}
 
+		// Synthesize speech
 		var buf bytes.Buffer
-
 		w := &BufWriteCloser{
 			Writer: bufio.NewWriter(&buf),
 		}
 		defer w.Close()
 
-		err := speechMaker(pitchList, wpmList, w)
+		err = fonspeak.FonspeakPhrase(fonspeak.PhraseParams{
+			Syllables: syllableList,
+			WavFile:   w,
+		}, 15)
+
 		if err != nil {
 			storeStatus(id, JobStatus{
 				State:   "ERRORED",
