@@ -82,10 +82,10 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 		statusURL := c.statusURL
 		defer file.Close()
 
-		re := regexp.MustCompile(`/(?i:^.*\.(mid|midi)$)/gm`)
+		re := regexp.MustCompile(`(?i)^.*\.(mid|midi)$`)
 		fileName := header.Filename
 
-		if re.MatchString(header.Filename) {
+		if !re.MatchString(header.Filename) {
 			storeStatus(id, JobStatus{
 				State:   "ERRORED",
 				Message: "Not a midi file.",
