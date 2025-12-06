@@ -18,6 +18,7 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/sammyshear/adon-olam/internal/fonspeak_midi"
+	"github.com/sammyshear/adon-olam/internal/timing"
 	"github.com/sammyshear/fonspeak"
 )
 
@@ -33,11 +34,12 @@ func (bwc *BufWriteCloser) Close() error {
 var syllables = []string{"a", "don", "o", "l@m", "aS", "er", "ma", "laX", "b@", "ter", "em", "kol", "je", "tsir", "niv", "ra", "l@", "et", "na:", "sa", "veX", "ef", "tso", "kol", "az", "ai", "mel", "eX", "Se", "mo", "nik", "ra", "ve", "aX", "a", "rei", "kix", "lot", "ha", "kol", "l@", "va", "do", "jim", "loX", "no", "ra", "v@", "hu", "ha", "ja", "v@", "hu", "ho", "ve", "v@", "hu", "ji", "je", "bet", "if", "ar", "a", "v@", "hu", "eX", "ad", "v@", "ein", "Se", "ni", "l@", "ham", "Sil", "lo", "l@", "haX", "bi", "ra", "bli", "re", "Sit", "bli", "taX", "lit", "v@", "lo", "ha", "oz", "v@", "ham", "mis", "rah", "v@", "hu", "el", "i", "v@", "Xai", "go", "al", "i", "v@", "tsur", "Xev", "li", "b@", "et", "tsa", "ra", "v@", "hu", "nis", "si", "u", "ma", "nos", "li", "m@", "nat", "ko", "si", "b@", "jom", "ek", "ra", "b@", "ja", "do", "af", "kid", "ru", "Xi", "b@", "et", "iS", "an", "v@", "a", "ir", "a", "v@", "im", "ru", "Xi", "g@", "vi", "ja", "ti", "ad", "on", "ai", "li", "v@", "lo", "ir", "a"}
 
 type channel struct {
-	requestID string
-	file      multipart.File
-	header    *multipart.FileHeader
-	statusURL string
-	trackNo   int
+	requestID       string
+	file            multipart.File
+	header          *multipart.FileHeader
+	statusURL       string
+	trackNo         int
+	timingStrategy  string
 }
 
 func UploadMidiHandler(ch chan channel) func(http.ResponseWriter, *http.Request) {
@@ -58,7 +60,14 @@ func UploadMidiHandler(ch chan channel) func(http.ResponseWriter, *http.Request)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-		ch <- channel{requestID, file, header, statusURL, trackNo}
+		
+		// Get timing strategy from form, default to per-syllable
+		timingStrategyVal := r.FormValue("timingStrategy")
+		if timingStrategyVal == "" {
+			timingStrategyVal = "per-syllable"
+		}
+		
+		ch <- channel{requestID, file, header, statusURL, trackNo, timingStrategyVal}
 
 		w.Header().Add("X-Status-URL", statusURL)
 
@@ -79,6 +88,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 		file := c.file
 		header := c.header
 		trackNo := c.trackNo
+		timingStrategyStr := c.timingStrategy
 		statusURL := c.statusURL
 		defer file.Close()
 
@@ -134,15 +144,42 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 			alignedSyllables = fonspeak_midi.AlignSyllablesToMelody(syllables, len(notes))
 		}
 
+		// Apply timing strategy to compute phoneme durations
+		var timingStrat timing.TimingStrategy
+		switch timingStrategyStr {
+		case "last-phoneme":
+			timingStrat = timing.LastPhoneme
+		case "per-syllable":
+			timingStrat = timing.PerSyllable
+		default:
+			// Default to per-syllable if invalid
+			timingStrat = timing.PerSyllable
+		}
+		
+		// Set up timing options
+		timingOpts := timing.DefaultTimingOptions()
+		timingOpts.Strategy = timingStrat
+		
+		// Prepare notes with syllables for timing allocation
+		notesWithSyllables := timing.PrepareNotesWithSyllables(alignedNotes, alignedSyllables)
+		
+		// Allocate durations using the timing module
+		notesWithSyllables = timing.AllocateDurations(notesWithSyllables, timingOpts)
+
 		// Build syllable parameters for fonspeak
 		syllableList := make([]fonspeak.Params, 0, len(alignedNotes))
 
-		for i, note := range alignedNotes {
+		for i, nws := range notesWithSyllables {
 			// Convert MIDI note to Hz with global octave drop
-			pitchHz := fonspeak_midi.MIDINoteToHz(note.MIDINote, -octaveDrop)
+			pitchHz := fonspeak_midi.MIDINoteToHz(nws.Note.MIDINote, -octaveDrop)
 
-			// Calculate WPM from duration
-			wpm := fonspeak_midi.WPMFromDuration(note.Duration)
+			// Calculate WPM from phoneme durations (computed by timing module)
+			wpm := timing.ComputeWPMFromPhonemes(nws.Syllables)
+			
+			// If no syllables, fall back to default
+			if len(nws.Syllables) == 0 {
+				wpm = fonspeak_midi.WPMFromDuration(nws.Note.Duration)
+			}
 
 			syllableList = append(syllableList, fonspeak.Params{
 				Syllable:   alignedSyllables[i],

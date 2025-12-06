@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/sammyshear/adon-olam/internal/fonspeak_midi"
+	"github.com/sammyshear/adon-olam/internal/timing"
 	"github.com/sammyshear/fonspeak"
 )
 
@@ -22,6 +23,7 @@ func main() {
 	voice := flag.String("voice", "he", "Voice to use for synthesis (default: he)")
 	maxHz := flag.Float64("maxhz", 500.0, "Maximum frequency cap in Hz (default: 500)")
 	trackNo := flag.Int("track", 0, "MIDI track number to use (default: 0)")
+	timingStrategy := flag.String("timing-strategy", "per-syllable", "Timing strategy: per-syllable (default) or last-phoneme (legacy)")
 
 	flag.Parse()
 
@@ -32,14 +34,14 @@ func main() {
 	}
 
 	// Run the synthesis pipeline
-	if err := runSynthesis(*midiPath, *ipaPath, *outPath, *voice, *maxHz, *trackNo); err != nil {
+	if err := runSynthesis(*midiPath, *ipaPath, *outPath, *voice, *maxHz, *trackNo, *timingStrategy); err != nil {
 		log.Fatalf("Synthesis failed: %v", err)
 	}
 
 	fmt.Printf("Successfully generated speech to %s\n", *outPath)
 }
 
-func runSynthesis(midiPath, ipaPath, outPath, voice string, maxHz float64, trackNo int) error {
+func runSynthesis(midiPath, ipaPath, outPath, voice string, maxHz float64, trackNo int, timingStrategyStr string) error {
 	// 1. Read MIDI file and extract monophonic melody
 	fmt.Println("Reading MIDI file...")
 	midiFile, err := os.Open(midiPath)
@@ -112,15 +114,45 @@ func runSynthesis(midiPath, ipaPath, outPath, voice string, maxHz float64, track
 
 	fmt.Printf("Aligned to %d note-syllable pairs\n", len(alignedNotes))
 
-	// 6. Build syllable parameters for fonspeak
+	// 6. Apply timing strategy to compute phoneme durations
+	fmt.Printf("Applying timing strategy: %s\n", timingStrategyStr)
+	
+	// Parse timing strategy
+	var timingStrat timing.TimingStrategy
+	switch timingStrategyStr {
+	case "last-phoneme":
+		timingStrat = timing.LastPhoneme
+	case "per-syllable":
+		timingStrat = timing.PerSyllable
+	default:
+		return fmt.Errorf("invalid timing strategy: %s (must be 'per-syllable' or 'last-phoneme')", timingStrategyStr)
+	}
+	
+	// Set up timing options
+	timingOpts := timing.DefaultTimingOptions()
+	timingOpts.Strategy = timingStrat
+	
+	// Prepare notes with syllables for timing allocation
+	notesWithSyllables := timing.PrepareNotesWithSyllables(alignedNotes, alignedSyllables)
+	
+	// Allocate durations using the timing module
+	notesWithSyllables = timing.AllocateDurations(notesWithSyllables, timingOpts)
+
+	// 7. Build syllable parameters for fonspeak
 	syllableList := make([]fonspeak.Params, 0, len(alignedNotes))
 
-	for i, note := range alignedNotes {
+	for i, nws := range notesWithSyllables {
 		// Convert MIDI note to Hz with global octave drop
-		pitchHz := fonspeak_midi.MIDINoteToHz(note.MIDINote, -octaveDrop)
+		pitchHz := fonspeak_midi.MIDINoteToHz(nws.Note.MIDINote, -octaveDrop)
 
-		// Calculate WPM from duration
-		wpm := fonspeak_midi.WPMFromDuration(note.Duration)
+		// Calculate WPM from phoneme durations (computed by timing module)
+		// This gives us a more intelligent WPM based on vowel lengthening
+		wpm := timing.ComputeWPMFromPhonemes(nws.Syllables)
+		
+		// If no syllables, fall back to default
+		if len(nws.Syllables) == 0 {
+			wpm = fonspeak_midi.WPMFromDuration(nws.Note.Duration)
+		}
 
 		syllableList = append(syllableList, fonspeak.Params{
 			Syllable:   alignedSyllables[i],
@@ -130,7 +162,7 @@ func runSynthesis(midiPath, ipaPath, outPath, voice string, maxHz float64, track
 		})
 	}
 
-	// 7. Synthesize speech with fonspeak
+	// 8. Synthesize speech with fonspeak
 	fmt.Println("Synthesizing speech...")
 
 	var buf bytes.Buffer
@@ -145,7 +177,7 @@ func runSynthesis(midiPath, ipaPath, outPath, voice string, maxHz float64, track
 		return fmt.Errorf("fonspeak synthesis failed: %w", err)
 	}
 
-	// 8. Write output file
+	// 9. Write output file
 	fmt.Println("Writing output file...")
 	err = os.WriteFile(outPath, buf.Bytes(), 0644)
 	if err != nil {
@@ -170,8 +202,13 @@ func init() {
 		fmt.Fprintf(os.Stderr, "\nGenerates speech synthesis of Adon Olam lyrics to a MIDI melody.\n\n")
 		fmt.Fprintf(os.Stderr, "Flags:\n")
 		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nExample:\n")
+		fmt.Fprintf(os.Stderr, "\nTiming Strategies:\n")
+		fmt.Fprintf(os.Stderr, "  per-syllable:  Intelligently distributes duration across syllables,\n")
+		fmt.Fprintf(os.Stderr, "                 prioritizing vowel lengthening (default, recommended)\n")
+		fmt.Fprintf(os.Stderr, "  last-phoneme:  Legacy behavior that puts extra duration in the last phoneme\n")
+		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  fonspeak_midi_driver -midi melody.mid -lyrics adon_olam_xsampa.txt -out output.wav\n")
 		fmt.Fprintf(os.Stderr, "  fonspeak_midi_driver -midi melody.mid -lyrics adon_olam_xsampa.txt -track 1 -voice he -maxhz 500 -out result.wav\n")
+		fmt.Fprintf(os.Stderr, "  fonspeak_midi_driver -midi melody.mid -lyrics adon_olam_xsampa.txt -timing-strategy last-phoneme -out legacy.wav\n")
 	}
 }
