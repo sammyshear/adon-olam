@@ -84,8 +84,8 @@ func ParseSyllableToPhonemes(syllableText string) []Phoneme {
 func isMultiCharPhoneme(s string) bool {
 	// Common X-SAMPA multi-character phonemes
 	multiChar := []string{
-		"aI", "eI", "OI", "aU", "@U", "I@", "E@", "U@",
-		"tS", "dZ", "er", // common combinations
+		"aI", "eI", "OI", "aU", "@U", "I@", "E@", "U@", // diphthongs
+		"tS", "dZ", "er", // affricates and r-colored vowels
 	}
 	
 	for _, mc := range multiChar {

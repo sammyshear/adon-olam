@@ -33,13 +33,14 @@ func (bwc *BufWriteCloser) Close() error {
 // syllables contains the Adon Olam lyrics in X-SAMPA format
 var syllables = []string{"a", "don", "o", "l@m", "aS", "er", "ma", "laX", "b@", "ter", "em", "kol", "je", "tsir", "niv", "ra", "l@", "et", "na:", "sa", "veX", "ef", "tso", "kol", "az", "ai", "mel", "eX", "Se", "mo", "nik", "ra", "ve", "aX", "a", "rei", "kix", "lot", "ha", "kol", "l@", "va", "do", "jim", "loX", "no", "ra", "v@", "hu", "ha", "ja", "v@", "hu", "ho", "ve", "v@", "hu", "ji", "je", "bet", "if", "ar", "a", "v@", "hu", "eX", "ad", "v@", "ein", "Se", "ni", "l@", "ham", "Sil", "lo", "l@", "haX", "bi", "ra", "bli", "re", "Sit", "bli", "taX", "lit", "v@", "lo", "ha", "oz", "v@", "ham", "mis", "rah", "v@", "hu", "el", "i", "v@", "Xai", "go", "al", "i", "v@", "tsur", "Xev", "li", "b@", "et", "tsa", "ra", "v@", "hu", "nis", "si", "u", "ma", "nos", "li", "m@", "nat", "ko", "si", "b@", "jom", "ek", "ra", "b@", "ja", "do", "af", "kid", "ru", "Xi", "b@", "et", "iS", "an", "v@", "a", "ir", "a", "v@", "im", "ru", "Xi", "g@", "vi", "ja", "ti", "ad", "on", "ai", "li", "v@", "lo", "ir", "a"}
 
+// channel holds information about a MIDI upload request being processed
 type channel struct {
-	requestID       string
-	file            multipart.File
-	header          *multipart.FileHeader
-	statusURL       string
-	trackNo         int
-	timingStrategy  string
+	requestID       string            // Unique identifier for this request
+	file            multipart.File    // The uploaded MIDI file
+	header          *multipart.FileHeader // File metadata
+	statusURL       string            // URL to check request status
+	trackNo         int               // MIDI track number to process
+	timingStrategy  string            // Timing strategy: "per-syllable" or "last-phoneme"
 }
 
 func UploadMidiHandler(ch chan channel) func(http.ResponseWriter, *http.Request) {

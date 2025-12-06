@@ -59,7 +59,9 @@ func DefaultTimingOptions() TimingOptions {
 	}
 }
 
-// NoteWithSyllables pairs a note with its aligned syllables
+// NoteWithSyllables pairs a MIDI note with the syllables that should be sung/spoken
+// during that note's duration. Used by the timing allocation algorithm to compute
+// phoneme-level durations.
 type NoteWithSyllables struct {
 	Note      fonspeak_midi.Note
 	Syllables []Syllable

@@ -215,7 +215,7 @@ func ComputeWPMFromPhonemes(syllables []Syllable) int {
 }
 
 // PrepareNotesWithSyllables converts raw notes and syllable strings into NoteWithSyllables
-// This handles the alignment of syllables to notes
+// This handles the alignment of syllables to notes with a simple 1:1 mapping.
 func PrepareNotesWithSyllables(notes []fonspeak_midi.Note, syllableTexts []string) []NoteWithSyllables {
 	if len(notes) == 0 || len(syllableTexts) == 0 {
 		return []NoteWithSyllables{}
@@ -224,8 +224,7 @@ func PrepareNotesWithSyllables(notes []fonspeak_midi.Note, syllableTexts []strin
 	result := make([]NoteWithSyllables, len(notes))
 	
 	for i, note := range notes {
-		// Map one syllable to one note (for now)
-		// In the future, this could be more sophisticated
+		// Map one syllable to one note (simple 1:1 alignment)
 		if i < len(syllableTexts) {
 			syl := ParseSyllable(syllableTexts[i])
 			result[i] = NoteWithSyllables{
