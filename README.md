@@ -8,6 +8,7 @@ A TTS singer of Adon Olam to the tune of a provided MIDI file and track. Uses [f
 - Collapses polyphonic tracks to monophonic by selecting the lowest pitch
 - Applies global octave transposition to keep pitches within synthesizable range
 - Aligns IPA syllables to musical notes
+- **Intelligent syllable-aware phoneme timing** that distributes note durations naturally across syllables
 - Synthesizes speech with precise pitch control using fonspeak
 
 ## Usage
@@ -21,6 +22,10 @@ go run cmd/main.go
 
 Then navigate to http://localhost:8080 to upload MIDI files and generate speech.
 
+**Timing Strategy:** The web interface includes a dropdown to select the timing strategy:
+- **Per-Syllable (Recommended)**: Intelligently distributes note duration across syllables, prioritizing vowel lengthening for more natural-sounding speech
+- **Last-Phoneme (Legacy)**: Places all extra duration at the end of the last phoneme
+
 ### Command Line Interface
 
 The repository includes a CLI tool for MIDI-driven speech synthesis:
@@ -29,11 +34,14 @@ The repository includes a CLI tool for MIDI-driven speech synthesis:
 # Build the CLI tool
 go build -o bin/fonspeak_midi_driver ./cmd/fonspeak_midi_driver
 
-# Run with default settings
+# Run with default settings (uses per-syllable timing strategy)
 ./bin/fonspeak_midi_driver -midi melody.mid -lyrics examples/adon_olam_xsampa.txt -out output.wav
 
 # Specify track number and other options
 ./bin/fonspeak_midi_driver -midi melody.mid -lyrics examples/adon_olam_xsampa.txt -track 1 -voice he -maxhz 500 -out result.wav
+
+# Use legacy timing strategy
+./bin/fonspeak_midi_driver -midi melody.mid -lyrics examples/adon_olam_xsampa.txt -timing-strategy last-phoneme -out legacy.wav
 ```
 
 #### CLI Flags
@@ -44,6 +52,9 @@ go build -o bin/fonspeak_midi_driver ./cmd/fonspeak_midi_driver
 - `-voice`: Voice to use for synthesis (default: "he")
 - `-maxhz`: Maximum frequency cap in Hz (default: 500)
 - `-track`: MIDI track number to use (default: 0)
+- `-timing-strategy`: Timing strategy for phoneme duration allocation (default: "per-syllable")
+  - `per-syllable`: Intelligently distributes duration across syllables, prioritizing vowel lengthening (recommended)
+  - `last-phoneme`: Legacy behavior that puts extra duration in the last phoneme
 
 #### Lyrics Text Format
 
@@ -62,7 +73,34 @@ a don o l@m aS er ma laX b@ ter em kol je tsir niv ra...
 4. **Syllable Alignment**: 
    - If more syllables than notes: repeats the melody to cover all syllables
    - If more notes than syllables: duplicates the last syllable (melisma)
-5. **Synthesis**: Calls fonspeak for each note with precise pitch (Hz) and WPM calculated from note duration
+5. **Intelligent Timing Allocation** (new):
+   - Breaks each syllable into phonemes (consonants and vowels)
+   - Distributes the MIDI note duration across the syllable's phonemes
+   - Prioritizes lengthening vowels to create more natural-sounding speech
+   - Respects minimum and maximum duration bounds for different phoneme types
+6. **Synthesis**: Calls fonspeak for each note with precise pitch (Hz) and WPM calculated from the intelligent timing allocation
+
+### Timing Strategies Explained
+
+#### Per-Syllable Strategy (Default)
+
+The per-syllable timing strategy intelligently distributes MIDI note durations across syllables to create more natural-sounding speech:
+
+- **Vowel Prioritization**: Extra duration is preferentially allocated to vowel phonemes within each syllable
+- **Natural Distribution**: Instead of dumping all leftover time into the last phoneme, duration is spread across the entire phrase
+- **Bounds Enforcement**: Respects minimum and maximum duration constraints for vowels (50ms-1000ms) and consonants (30ms-200ms)
+- **Smart Handling**: Handles edge cases like syllables without clear vowels, extremely short or long notes
+
+**Example**: For a 1-second note mapped to syllable "ba":
+- Legacy approach: "b" gets base duration (~80ms), "a" gets all remaining time (~920ms)
+- Per-syllable approach: "b" gets minimum (~30ms), "a" gets the rest distributed naturally (~970ms), respecting vowel lengthening principles
+
+#### Last-Phoneme Strategy (Legacy)
+
+This maintains backward compatibility with the original behavior:
+- All phonemes get a base duration (80ms by default)
+- Any remaining time is added entirely to the last phoneme
+- Simple but can sound unnatural with long notes
 
 ## Development
 
