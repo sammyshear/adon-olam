@@ -104,3 +104,75 @@ func ParseSyllable(syllableText string) Syllable {
 		Phonemes: ParseSyllableToPhonemes(syllableText),
 	}
 }
+
+// ExtendSyllableVowel extends a syllable by duplicating its vowel nucleus
+// For example: "don" with count=5 becomes ["d", "o", "o", "o", "on"]
+// This creates multiple syllable variations where the vowel is progressively repeated
+func ExtendSyllableVowel(syllableText string, count int) []string {
+	if count <= 1 {
+		return []string{syllableText}
+	}
+	
+	phonemes := ParseSyllableToPhonemes(syllableText)
+	if len(phonemes) == 0 {
+		return []string{syllableText}
+	}
+	
+	// Find the first vowel (nucleus) position
+	vowelIdx := -1
+	for i, ph := range phonemes {
+		if ph.Kind == Vowel {
+			vowelIdx = i
+			break
+		}
+	}
+	
+	// If no vowel found, just repeat the syllable as-is
+	if vowelIdx == -1 {
+		result := make([]string, count)
+		for i := range result {
+			result[i] = syllableText
+		}
+		return result
+	}
+	
+	// Split into onset (before vowel), nucleus (vowel), and coda (after vowel)
+	var onset, nucleus, coda string
+	
+	// Build onset (consonants before the vowel)
+	for i := 0; i < vowelIdx; i++ {
+		onset += phonemes[i].Text
+	}
+	
+	// Get the vowel
+	nucleus = phonemes[vowelIdx].Text
+	
+	// Build coda (consonants after the vowel)
+	for i := vowelIdx + 1; i < len(phonemes); i++ {
+		coda += phonemes[i].Text
+	}
+	
+	// Generate extended syllables
+	result := make([]string, count)
+	
+	// First syllable: onset + vowel (no coda yet)
+	if onset != "" {
+		result[0] = onset + nucleus
+	} else {
+		result[0] = nucleus
+	}
+	
+	// Middle syllables: just the vowel repeated
+	for i := 1; i < count-1; i++ {
+		result[i] = nucleus
+	}
+	
+	// Last syllable: vowel + coda
+	if coda != "" {
+		result[count-1] = nucleus + coda
+	} else {
+		result[count-1] = nucleus
+	}
+	
+	return result
+}

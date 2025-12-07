@@ -140,7 +140,7 @@ func uploadMidiProcessor(ch chan channel, wg *sync.WaitGroup) {
 			alignedNotes = fonspeak_midi.RepeatMelodyToCoverSyllables(notes, syllableCount)
 			alignedSyllables = syllables
 		} else {
-			// Use all notes and distribute syllables evenly across them
+			// Use all notes and distribute syllables evenly with vowel-only extension
 			alignedNotes = notes
 			alignedSyllables = fonspeak_midi.AlignSyllablesToMelody(syllables, len(notes))
 		}

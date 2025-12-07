@@ -2,6 +2,8 @@ package fonspeak_midi
 
 import (
 	"math"
+	"strings"
+	"unicode"
 )
 
 // Note represents a musical note with pitch (MIDI number) and duration in seconds
@@ -102,9 +104,106 @@ func RepeatMelodyToCoverSyllables(notes []Note, syllableCount int) []Note {
 	return result
 }
 
+// isVowelChar checks if a character is a vowel (including X-SAMPA vowel symbols)
+func isVowelChar(r rune) bool {
+	vowels := "aeiouæɑɔəɛɪʊʌAEIOUyY@69"
+	return strings.ContainsRune(vowels, r)
+}
+
+// isVowelPhoneme checks if a phoneme string represents a vowel
+func isVowelPhoneme(phoneme string) bool {
+	if phoneme == "" {
+		return false
+	}
+	for _, r := range phoneme {
+		if unicode.IsLetter(r) || r == '@' {
+			return isVowelChar(r)
+		}
+	}
+	return false
+}
+
+// splitSyllable splits a syllable into onset (consonants before vowel), 
+// nucleus (vowel), and coda (consonants after vowel)
+// Returns onset, nucleus, coda strings
+func splitSyllable(syllable string) (string, string, string) {
+	if syllable == "" {
+		return "", "", ""
+	}
+	
+	// Find the first vowel position
+	vowelStart := -1
+	vowelEnd := -1
+	
+	for i, r := range syllable {
+		if isVowelChar(r) {
+			if vowelStart == -1 {
+				vowelStart = i
+			}
+			vowelEnd = i + 1
+		} else if vowelStart != -1 {
+			// Found consonant after vowel, stop
+			break
+		}
+	}
+	
+	// If no vowel found, treat entire syllable as onset
+	if vowelStart == -1 {
+		return syllable, "", ""
+	}
+	
+	onset := syllable[:vowelStart]
+	nucleus := syllable[vowelStart:vowelEnd]
+	coda := syllable[vowelEnd:]
+	
+	return onset, nucleus, coda
+}
+
+// extendSyllableVowel extends a syllable by duplicating its vowel nucleus
+// For example: "don" with count=5 becomes ["d", "o", "o", "o", "on"]
+func extendSyllableVowel(syllable string, count int) []string {
+	if count <= 1 {
+		return []string{syllable}
+	}
+	
+	onset, nucleus, coda := splitSyllable(syllable)
+	
+	// If no vowel found, just repeat the syllable
+	if nucleus == "" {
+		result := make([]string, count)
+		for i := range result {
+			result[i] = syllable
+		}
+		return result
+	}
+	
+	result := make([]string, count)
+	
+	// First syllable: onset + vowel
+	if onset != "" {
+		result[0] = onset + nucleus
+	} else {
+		result[0] = nucleus
+	}
+	
+	// Middle syllables: just the vowel
+	for i := 1; i < count-1; i++ {
+		result[i] = nucleus
+	}
+	
+	// Last syllable: vowel + coda
+	if coda != "" {
+		result[count-1] = nucleus + coda
+	} else {
+		result[count-1] = nucleus
+	}
+	
+	return result
+}
+
 // AlignSyllablesToMelody aligns syllables to notes
 // If there are more notes than syllables, distributes syllables evenly across notes
-// Each syllable can be mapped to multiple consecutive notes (melisma)
+// and extends each syllable's vowel across its assigned notes (melisma)
 // If there are more syllables than notes, the melody should have been repeated already
 func AlignSyllablesToMelody(syllables []string, noteCount int) []string {
 	if len(syllables) == 0 {
@@ -115,19 +214,38 @@ func AlignSyllablesToMelody(syllables []string, noteCount int) []string {
 		return syllables[:noteCount]
 	}
 
-	// Distribute syllables evenly across notes
-	// Each syllable gets roughly noteCount/syllableCount notes
+	// Distribute syllables evenly across notes with vowel extension
 	result := make([]string, noteCount)
 	
 	notesPerSyllable := float64(noteCount) / float64(len(syllables))
 	
-	for i := 0; i < noteCount; i++ {
-		// Determine which syllable this note belongs to
-		syllableIdx := int(float64(i) / notesPerSyllable)
-		if syllableIdx >= len(syllables) {
-			syllableIdx = len(syllables) - 1
+	// For each syllable, determine how many notes it gets and extend its vowel
+	noteIdx := 0
+	for sylIdx, syllable := range syllables {
+		// Calculate how many notes this syllable should span
+		startNote := int(float64(sylIdx) * notesPerSyllable)
+		endNote := int(float64(sylIdx+1) * notesPerSyllable)
+		
+		// Handle rounding for the last syllable
+		if sylIdx == len(syllables)-1 {
+			endNote = noteCount
 		}
-		result[i] = syllables[syllableIdx]
+		
+		notesForThisSyllable := endNote - startNote
+		if notesForThisSyllable < 1 {
+			notesForThisSyllable = 1
+		}
+		
+		// Extend the syllable's vowel across the notes
+		extendedSyllables := extendSyllableVowel(syllable, notesForThisSyllable)
+		
+		// Place the extended syllables into the result
+		for _, extSyl := range extendedSyllables {
+			if noteIdx < noteCount {
+				result[noteIdx] = extSyl
+				noteIdx++
+			}
+		}
 	}
 
 	return result

@@ -70,9 +70,11 @@ a don o l@m aS er ma laX b@ ter em kol je tsir niv ra...
 1. **MIDI Reading**: Extracts notes from the specified MIDI track, including pitch (MIDI note number) and duration
 2. **Monophonic Collapse**: If multiple notes occur simultaneously (chords), selects the lowest pitch
 3. **Global Octave Cap**: Calculates the highest pitch in the melody and applies octave transposition (down) so the highest pitch is ≤ maxhz (default 500 Hz)
-4. **Syllable Alignment**: 
+4. **Syllable Alignment & Vowel Extension**: 
    - If more syllables than notes: repeats the melody to cover all syllables
-   - If more notes than syllables: distributes syllables evenly across notes (each syllable can span multiple notes for melisma)
+   - If more notes than syllables: distributes syllables evenly across notes with **vowel-only extension**
+   - When a syllable spans multiple notes (melisma), only the vowel nucleus is duplicated, preserving consonants at boundaries
+   - Example: "don" over 5 notes becomes ["do", "o", "o", "o", "on"] (d-o-o-o-on), not ["don", "don", "don", "don", "don"]
 5. **Intelligent Timing Allocation** (new):
    - Breaks each syllable into phonemes (consonants and vowels)
    - Distributes the MIDI note duration across the syllable's phonemes
@@ -86,8 +88,8 @@ a don o l@m aS er ma laX b@ ter em kol je tsir niv ra...
 
 The per-syllable timing strategy intelligently distributes MIDI note durations across syllables to create more natural-sounding speech:
 
-- **Vowel Prioritization**: Extra duration is preferentially allocated to vowel phonemes within each syllable
-- **Natural Distribution**: Syllables are distributed evenly across notes. When a syllable spans multiple notes (melisma), the vowels within that syllable are extended across those notes
+- **Vowel-Only Extension**: When a syllable spans multiple notes, only the vowel nucleus is duplicated while consonants remain at syllable boundaries
+- **Natural Distribution**: Syllables are distributed evenly across notes with intelligent vowel extension for melisma
 - **Bounds Enforcement**: Respects minimum and maximum duration constraints for vowels (50ms-1000ms) and consonants (30ms-200ms)
 - **Smart Handling**: Handles edge cases like syllables without clear vowels, extremely short or long notes
 
@@ -95,10 +97,14 @@ The per-syllable timing strategy intelligently distributes MIDI note durations a
 - Legacy approach: "b" gets base duration (~80ms), "a" gets all remaining time (~920ms)
 - Per-syllable approach: "b" gets minimum (~30ms), "a" gets the rest distributed naturally (~970ms)
 
-**Example 2**: For 4 notes mapped to 2 syllables ["a", "don"]:
-- Notes 1-2 → "a" (vowel extended across 2 notes)
-- Notes 3-4 → "don" (vowel "o" extended across 2 notes)
-- Instead of: Note 1 → "a", Notes 2-4 → "don" (old behavior)
+**Example 2**: Syllable "don" over 5 notes (vowel-only extension):
+- Result: ["do", "o", "o", "o", "on"] (d-o-o-o-on)
+- Onset "d" stays with first note, vowel "o" repeated in middle, coda "n" with last note
+- Consonants are NOT duplicated, only the vowel is extended
+
+**Example 3**: Two syllables ["a", "don"] over 6 notes:
+- Notes 1-3: ["a", "a", "a"] (vowel "a" extended)
+- Notes 4-6: ["do", "o", "on"] (vowel "o" extended, consonants at boundaries)
 
 #### Last-Phoneme Strategy (Legacy)
 
