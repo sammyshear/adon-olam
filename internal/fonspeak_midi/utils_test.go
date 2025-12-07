@@ -104,27 +104,126 @@ func TestRepeatMelodyToCoverSyllables(t *testing.T) {
 }
 
 func TestAlignSyllablesToMelody(t *testing.T) {
-	syllables := []string{"a", "b", "c"}
-
 	tests := []struct {
-		name      string
-		noteCount int
-		wantLen   int
-		wantLast  string
+		name       string
+		syllables  []string
+		noteCount  int
+		wantLen    int
+		wantResult []string
 	}{
-		{"Exact match", 3, 3, "c"},
-		{"More notes (melisma)", 5, 5, "c"}, // last syllable repeated
-		{"Fewer notes", 2, 2, "b"},
+		{
+			name:       "Exact match",
+			syllables:  []string{"a", "b", "c"},
+			noteCount:  3,
+			wantLen:    3,
+			wantResult: []string{"a", "b", "c"},
+		},
+		{
+			name:       "Single vowel syllable extended",
+			syllables:  []string{"a"},
+			noteCount:  3,
+			wantLen:    3,
+			wantResult: []string{"a", "a", "a"},
+		},
+		{
+			name:       "CVC syllable extended (don over 5 notes)",
+			syllables:  []string{"don"},
+			noteCount:  5,
+			wantLen:    5,
+			wantResult: []string{"do", "o", "o", "o", "on"}, // d-o-o-o-on
+		},
+		{
+			name:       "Two syllables distributed (a, don over 6 notes)",
+			syllables:  []string{"a", "don"},
+			noteCount:  6,
+			wantLen:    6,
+			wantResult: []string{"a", "a", "a", "do", "o", "on"}, // 3 notes each
+		},
+		{
+			name:       "Fewer notes",
+			syllables:  []string{"a", "b", "c"},
+			noteCount:  2,
+			wantLen:    2,
+			wantResult: []string{"a", "b"},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := AlignSyllablesToMelody(syllables, tt.noteCount)
+			got := AlignSyllablesToMelody(tt.syllables, tt.noteCount)
 			if len(got) != tt.wantLen {
 				t.Errorf("AlignSyllablesToMelody() returned %d syllables, want %d", len(got), tt.wantLen)
 			}
-			if got[len(got)-1] != tt.wantLast {
-				t.Errorf("Last syllable = %s, want %s", got[len(got)-1], tt.wantLast)
+			if tt.wantResult != nil {
+				for i, want := range tt.wantResult {
+					if got[i] != want {
+						t.Errorf("Position %d: got %s, want %s. Full result: %v", i, got[i], want, got)
+						break
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestSplitSyllable(t *testing.T) {
+	tests := []struct {
+		name        string
+		syllable    string
+		wantOnset   string
+		wantNucleus string
+		wantCoda    string
+	}{
+		{"Simple CVC", "don", "d", "o", "n"},
+		{"Vowel only", "a", "", "a", ""},
+		{"CV", "ba", "b", "a", ""},
+		{"VC", "on", "", "o", "n"},
+		{"CCV", "bra", "br", "a", ""},
+		{"CCVC", "bran", "br", "a", "n"},
+		{"Multiple consonants in coda", "band", "b", "a", "nd"},
+		{"X-SAMPA schwa", "l@m", "l", "@", "m"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			onset, nucleus, coda := splitSyllable(tt.syllable)
+			if onset != tt.wantOnset || nucleus != tt.wantNucleus || coda != tt.wantCoda {
+				t.Errorf("splitSyllable(%q) = (%q, %q, %q), want (%q, %q, %q)",
+					tt.syllable, onset, nucleus, coda,
+					tt.wantOnset, tt.wantNucleus, tt.wantCoda)
+			}
+		})
+	}
+}
+
+func TestExtendSyllableVowel(t *testing.T) {
+	tests := []struct {
+		name       string
+		syllable   string
+		count      int
+		wantResult []string
+	}{
+		{"Single note", "don", 1, []string{"don"}},
+		{"Don over 5 notes", "don", 5, []string{"do", "o", "o", "o", "on"}},
+		{"Vowel only over 3 notes", "a", 3, []string{"a", "a", "a"}},
+		{"CV over 3 notes", "ba", 3, []string{"ba", "a", "a"}},
+		{"VC over 3 notes", "on", 3, []string{"o", "o", "on"}},
+		{"CVC over 2 notes", "ban", 2, []string{"ba", "an"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extendSyllableVowel(tt.syllable, tt.count)
+			if len(got) != len(tt.wantResult) {
+				t.Errorf("extendSyllableVowel(%q, %d) returned %d results, want %d",
+					tt.syllable, tt.count, len(got), len(tt.wantResult))
+				return
+			}
+			for i, want := range tt.wantResult {
+				if got[i] != want {
+					t.Errorf("extendSyllableVowel(%q, %d)[%d] = %q, want %q. Full: %v",
+						tt.syllable, tt.count, i, got[i], want, got)
+				}
 			}
 		})
 	}
@@ -151,3 +250,4 @@ func TestIPAToXSAMPA(t *testing.T) {
 		})
 	}
 }
+

@@ -7,6 +7,11 @@ templ Index() {
 				<input type="file" name="uploadFile"/>
 				<label for="trackNo">Track Number</label>
 				<input type="number" name="trackNo"/>
+				<label for="timingStrategy">Timing Strategy</label>
+				<select name="timingStrategy">
+					<option value="per-syllable" selected>Per-Syllable (Recommended)</option>
+					<option value="last-phoneme">Last-Phoneme (Legacy)</option>
+				</select>
 				<button>
 					Upload
 				</button>
